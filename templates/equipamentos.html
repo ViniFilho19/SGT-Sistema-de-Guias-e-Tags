@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block title %}Equipamentos{% endblock %}
+{% block voltar %}<a class="btn ghost" href="/">← Voltar</a>{% endblock %}
+{% block content %}
+<div class="bar"><h1>Equipamentos</h1>
+  <form method="get" class="actions"><input name="q" value="{{ q }}" placeholder="Patrimônio, série, hostname ou IP" style="width:300px"><button class="btn">Buscar</button></form></div>
+<div class="card scroll"><table>
+  <tr><th>Tipo</th><th>Modelo</th><th>Patrimônio</th><th>Nº série</th><th>Hostname</th><th>IP</th><th>Localidade</th></tr>
+  {% for e in itens %}<tr><td>{{ e.tipo }}</td><td>{{ e.modelo or "" }}</td><td>{{ e.patrimonio or "" }}</td><td>{{ e.serial or "" }}</td>
+    <td>{{ e.hostname or "" }}</td><td>{{ e.ip or "" }}</td><td>{{ e.localidade or "" }}</td></tr>
+  {% else %}<tr><td colspan="7">Nenhum equipamento encontrado.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

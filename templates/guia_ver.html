@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% block title %}Guia {{ g.id }}{% endblock %}
+{% block voltar %}<a class="btn ghost" href="/guias">← Voltar</a>{% endblock %}
+{% block content %}
+<div class="bar noprint"><h1>Guia nº {{ g.id }}</h1><div class="actions">
+  <a class="btn ghost" href="/guias/{{ g.id }}?data={{ 0 if usar_data else 1 }}">{{ "Data em branco" if usar_data else "Usar data de registro" }}</a>
+  <button class="btn" data-print>Imprimir guia</button></div></div>
+<div class="folha">
+{% for via in ["1ª VIA - REMETENTE","2ª VIA - DESTINATÁRIO"] %}
+  <section class="via"><small>{{ via }}</small>
+    <div class="via-h"><img src="/static/logo.svg" alt=""><h2>{{ g.tipo }}</h2><b style="font-size:12px">{{ data_txt }}</b></div>
+    <div class="dados"><span><b>Chamado:</b> {{ g.chamado or "N/A" }}</span><span><b>Remetente:</b> {{ g.remetente }}</span><span><b>Destinatário:</b> {{ g.destinatario }}</span></div>
+    <h3 style="margin:12px 0 6px">Equipamentos</h3>
+    <table class="guia-t"><tr><th>ITEM</th><th>MODELO/MARCA</th><th>PATRIMÔNIO</th><th>Nº DE SÉRIE</th><th>NOME DA MÁQUINA</th><th>I.P</th></tr>
+      {% for i in g.itens %}<tr><td>{{ i.tipo_equipamento }}</td><td>{{ i.modelo or "" }}</td><td>{{ i.patrimonio or "" }}</td>
+        <td>{{ i.serial or "" }}</td><td>{{ i.hostname or "" }}</td><td>{{ i.ip or "" }}</td></tr>{% endfor %}</table>
+    <div class="assin">
+      <div><h4>Responsável CTI</h4><p>Nome: {% if g.responsavel %}<strong>{{ g.responsavel }}</strong>{% else %}_______________________________{% endif %}</p>
+        <p>Contato: ____________________________</p><p>Assinatura: _________________________</p></div>
+      <div><h4>Portador Responsável</h4><p>Nome: _______________________________</p><p>Contato: ____________________________</p>
+        <p>CPF: ________________________________</p><p>Assinatura: _________________________</p></div>
+    </div>
+  </section>
+  {% if not loop.last %}<hr class="corte">{% endif %}
+{% endfor %}
+</div>
+{% endblock %}

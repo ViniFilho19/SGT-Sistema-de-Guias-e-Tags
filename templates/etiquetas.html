@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% block title %}Etiquetas{% endblock %}
+{% block voltar %}<a class="btn ghost" href="/">← Voltar</a>{% endblock %}
+{% block content %}
+<div class="cols">
+  <form class="card noprint" method="post" action="/etiquetas">
+    <h2>Criar nova etiqueta</h2>
+    {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+    <div class="form-grid">
+      <label>Hostname*<input name="hostname" value="{{ v.hostname }}" required></label>
+      <label>Endereço IP*<input name="ip" value="{{ v.ip }}" required></label>
+      <label>Patrimônio*<input name="patrimonio" value="{{ v.patrimonio }}" required></label>
+      <label>Nº de série*<input name="serial" value="{{ v.serial }}" required></label>
+      <label>Localidade*<input name="localidade" value="{{ v.localidade }}" required></label>
+      <label>Máscara de sub-rede<input name="mascara" value="{{ v.mascara }}"></label>
+      <label>Gateway padrão<input name="gateway" value="{{ v.gateway }}"></label>
+    </div><br>
+    <button class="btn">Criar etiqueta</button>
+  </form>
+
+  <section class="card">
+    <div class="bar noprint"><h2 style="margin:0">Etiquetas recentes</h2>
+      {% if etiquetas %}<div class="actions">
+        <form method="post" action="/etiquetas/limpar" style="margin:0"
+              onsubmit="return confirm('Limpar todas as etiquetas desta lista? O histórico continua salvo.')">
+          <button class="btn ghost">Limpar lista</button></form>
+        <button class="btn" data-print>Imprimir etiquetas</button>
+      </div>{% endif %}</div>
+    <div class="etqs">
+    {% for e in etiquetas %}
+      <div class="etq" style="position:relative"><img class="lg" src="/static/logo.svg" alt="">
+        <div class="tx"><b>{{ e.eq.hostname }}</b><br>{{ e.eq.ip }}<br>{{ e.eq.localidade }}</div>
+        <img class="qr" src="{{ e.qr }}" alt="QR {{ e.eq.hostname }}">
+        <form class="noprint" method="post" action="/etiquetas/{{ e.id }}/ocultar"
+              style="position:absolute;top:-10px;right:-10px;margin:0">
+          <button class="btn ghost sm" title="Remover da lista" aria-label="Remover etiqueta {{ e.eq.hostname }} da lista"
+                  style="padding:0 7px;line-height:1.5;border-radius:999px;background:#fff">×</button></form></div>
+    {% else %}<p class="noprint" style="color:var(--muted)">Nenhuma etiqueta criada ainda.</p>{% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

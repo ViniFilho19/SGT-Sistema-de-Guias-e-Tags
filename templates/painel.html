@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% block title %}Painel{% endblock %}
+{% block content %}
+<section class="hero">
+  <p>Bem-vindo, {{ user.nome }}! Perfil {{ user.papel|capitalize }} • DETRAN-BA</p>
+  <h1>Painel de serviços SGT</h1>
+  <p>Gere etiquetas com QR code, emita guias de entrada e saída e consulte o cadastro de equipamentos.</p>
+  <span class="status">Sistema ativo</span>
+</section>
+
+<div class="secao">Geral <span class="chip">Emissão</span></div>
+<div class="grid3">
+  <a class="card" href="/etiquetas"><div class="card-h"><h3>Criar etiquetas</h3><span class="badge b-blue">QR code</span></div>
+    <p>Cadastre o equipamento, gere a etiqueta com QR e imprima.</p><span class="seta">→</span></a>
+  <a class="card" href="/guias/nova"><div class="card-h"><h3>Nova guia</h3><span class="badge b-green">Entrada | Saída</span></div>
+    <p>Emita a guia com os equipamentos e as duas vias para assinatura.</p><span class="seta">→</span></a>
+</div>
+
+<div class="secao">Consultas <span class="chip">Histórico &amp; cadastro</span></div>
+<div class="grid3">
+  <a class="card" href="/guias"><div class="card-h"><h3>Guias emitidas</h3><span class="badge b-orange">Histórico</span></div>
+    <p>Reabra e reimprima guias já registradas.</p><span class="seta">→</span></a>
+  <a class="card" href="/equipamentos"><div class="card-h"><h3>Equipamentos</h3><span class="badge b-blue">Cadastro</span></div>
+    <p>Pesquise por patrimônio, série, hostname ou IP.</p><span class="seta">→</span></a>
+  <a class="card" href="/relatorios"><div class="card-h"><h3>Relatórios</h3><span class="badge b-blue">Mensal</span></div>
+    <p>Veja a movimentação mensal de guias e etiquetas.</p><span class="seta">→</span></a>
+</div>
+{% if user.papel == "admin" %}
+<div class="secao">Administração <span class="chip">Somente admin</span></div>
+<div class="grid3">
+  <a class="card" href="/usuarios"><div class="card-h"><h3>Usuários</h3><span class="badge b-orange">Admin</span></div>
+    <p>Crie usuários, defina o papel, redefina senhas e ative ou desative acessos.</p><span class="seta">→</span></a>
+</div>
+{% endif %}
+{% endblock %}

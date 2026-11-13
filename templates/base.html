@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}SGT{% endblock %} · DETRAN-BA</title>
+<link rel="icon" href="/static/logo.svg"><link rel="stylesheet" href="/static/app.css"></head>
+<body>
+<header class="topbar"><div class="topbar-in">
+  <a class="brand" href="/"><img src="/static/logo.svg" alt="">
+    <div><small>DETRAN BAHIA</small><strong>SGT</strong> <span>— Sistema de Guias e Tags</span></div></a>
+  {% if user %}<div class="actions">
+    <span class="pill">{{ user.papel|capitalize }}</span>
+    {% block voltar %}{% endblock %}
+    <a class="btn ghost" href="/">⌂ Painel</a>
+    <form method="post" action="/sair"><button class="btn danger">Sair</button></form>
+  </div>{% endif %}
+</div></header>
+<main class="wrap">{% block content %}{% endblock %}</main>
+<script src="/static/print.js"></script>
+</body></html>

@@ -1,0 +1,16 @@
+services:
+  etiquetas:
+    build: .
+    image: etiquetas-api:latest
+    container_name: etiquetas-api
+    restart: unless-stopped
+    ports:
+      - "5005:5005"
+    env_file:
+      - .env
+    environment:
+      # Sobrescreve o DATABASE_URL do .env para usar o volume persistente
+      DATABASE_URL: sqlite:////app/data/etiquetas.db
+      TZ: America/Bahia
+    volumes:
+      - ./data:/app/data
