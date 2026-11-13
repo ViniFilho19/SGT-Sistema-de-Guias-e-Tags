@@ -9,8 +9,8 @@
     <h2 class="section-title mb-5 flex items-center gap-2"><span class="grid size-6 place-items-center rounded-full bg-brand-700 text-xs font-bold text-white">1</span>Dados da guia</h2>
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <label>Tipo de guia<select name="tipo">
-        {% for t in ["GUIA DE SAÍDA","GUIA DE ENTRADA"] %}<option {{ "selected" if v.tipo==t }}>{{ t }}</option>{% endfor %}</select></label>
-      <label>Número de chamado<input name="chamado" value="{{ v.chamado }}"></label>
+        {% for t in tipos_guia %}<option {{ "selected" if v.tipo==t }}>{{ t }}</option>{% endfor %}</select></label>
+      <label>Número de chamado <span class="sr-only">(obrigatório)</span><input name="chamado" value="{{ v.chamado }}" required maxlength="100"></label>
       <label>Responsável CTI<input name="responsavel" value="{{ v.responsavel }}" placeholder="Em branco = preencher à mão"></label>
       <label>Setor remetente<input name="remetente" value="{{ v.remetente }}" placeholder="Saída: CTI - SERVICE DESK (automático)"></label>
       <label>Destinatário<input name="destinatario" value="{{ v.destinatario }}" placeholder="Entrada: CTI - SERVICE DESK (automático)"></label>

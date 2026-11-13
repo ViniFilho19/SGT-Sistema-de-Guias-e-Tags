@@ -44,7 +44,7 @@
 {% set texto %}
 Prezados,
 
-Informamos que {{ "o equipamento" if g.itens|length == 1 else "os equipamentos" }} referente{{ "" if g.itens|length == 1 else "s" }} {{ "ao chamado " ~ g.chamado if g.chamado else "a esta solicitação" }} {{ "foi entregue" if g.itens|length == 1 else "foram entregues" }}{{ " em " ~ entregue_txt if entregue_txt }}.
+Informamos que {{ "o equipamento" if g.itens|length == 1 else "os equipamentos" }} referente{{ "" if g.itens|length == 1 else "s" }} {{ "ao chamado " ~ g.chamado if g.chamado else "a esta solicitação" }} {{ "foi entregue" if g.itens|length == 1 else "foram entregues" }}{{ " para desfazimento" if 'DESFAZIMENTO' in g.tipo }}{{ " em " ~ entregue_txt if entregue_txt }}.
 
 Destino: {{ g.destinatario }}
 {% if g.retirado_por %}Retirado por: {{ g.retirado_por }}
@@ -53,7 +53,7 @@ Destino: {{ g.destinatario }}
 {{ "Equipamento" if g.itens|length == 1 else "Equipamentos" }}:
 {% for i in g.itens %}- {{ [i.tipo_equipamento, i.modelo]|select|join(" ") }}{% for rot, val in [("Patrimônio", i.patrimonio), ("Série", i.serial), ("Hostname", i.hostname), ("IP", i.ip)] if val %} | {{ rot }}: {{ val }}{% endfor %}
 {% endfor %}
-Guia de saída nº {{ g.id }}.
+{{ "Guia de saída (desfazimento)" if 'DESFAZIMENTO' in g.tipo else "Guia de saída" }} nº {{ g.id }}.
 
 Atenciosamente,
 CTI - Service Desk

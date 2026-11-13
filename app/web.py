@@ -155,7 +155,8 @@ def etiqueta_ocultar(id_: int, db: Session = Depends(get_db), user: User = Depen
 def _form_guia(request, user, v=None, linhas=None, erro=None, status=200):
     v = v or {"tipo": "GUIA DE SAÍDA", "chamado": "", "remetente": "", "destinatario": "", "responsavel": ""}
     linhas = linhas or [{c: "" for c in COLS_ITEM} | {"tipo_equipamento": "Computador"} for _ in range(LINHAS)]
-    return pagina(request, "guias_nova.html", user, status, v=v, linhas=linhas, tipos=TIPOS, erro=erro)
+    return pagina(request, "guias_nova.html", user, status, v=v, linhas=linhas, tipos=TIPOS, erro=erro,
+                  tipos_guia=TIPOS_GUIA)
 
 
 @router.get("/guias/nova")
@@ -172,8 +173,10 @@ async def guia_criar(request: Request, db: Session = Depends(get_db), user: User
     itens = [l for l in linhas if any(l[c] for c in COLS_ITEM[1:])]
     if v["tipo"] == "GUIA DE ENTRADA":
         v["destinatario"] = v["destinatario"] or SD
-    elif v["tipo"] == "GUIA DE SAÍDA":
+    elif v["tipo"].startswith("GUIA DE SAÍDA"):
         v["remetente"] = v["remetente"] or SD
+    if not v["chamado"]:
+        return _form_guia(request, user, v, linhas, "Informe o número do chamado.", 422)
     try:
         dados = GuiaCreate(**v, itens=itens)
     except ValidationError:
@@ -182,12 +185,15 @@ async def guia_criar(request: Request, db: Session = Depends(get_db), user: User
     return RedirectResponse(f"/guias/{guia.id}", 303)
 
 
-SAIDA, ENTRADA = "GUIA DE SAÍDA", "GUIA DE ENTRADA"
+SAIDA, ENTRADA, DESFAZIMENTO = "GUIA DE SAÍDA", "GUIA DE ENTRADA", "GUIA DE SAÍDA - DESFAZIMENTO"
+TIPOS_GUIA = [SAIDA, DESFAZIMENTO, ENTRADA]
+E_SAIDA = Guia.tipo.like(SAIDA + "%")  # saída comum ou desfazimento
 PRONTA = or_(Guia.status.is_(None), Guia.status == "pronta")
 FILTROS = {  # aba -> (rótulo, condição)
     "todas": ("Todas", None),
-    "prontas": ("Prontas p/ entrega", (Guia.tipo == SAIDA) & PRONTA),
-    "entregues": ("Entregues", (Guia.tipo == SAIDA) & (Guia.status == "entregue")),
+    "prontas": ("Prontas p/ entrega", E_SAIDA & PRONTA),
+    "entregues": ("Entregues", E_SAIDA & (Guia.status == "entregue")),
+    "desfazimento": ("Desfazimento", Guia.tipo == DESFAZIMENTO),
     "entrada": ("Entrada", Guia.tipo == ENTRADA),
 }
 AVISOS_GUIA = {"entregue": "Entrega registrada.", "reaberta": "Guia voltou para “pronta”."}
@@ -213,7 +219,7 @@ def guias(request: Request, f: str = "todas", ok: str = "", erro: str = "",
 
 def _guia_saida(db: Session, id_: int) -> Guia:
     g = db.get(Guia, id_)
-    if not g or g.tipo != SAIDA:
+    if not g or not g.tipo.startswith(SAIDA):
         raise HTTPException(404, "Guia de saída não encontrada")
     return g
 

@@ -15,7 +15,7 @@ router = APIRouter(prefix="/guias", tags=["guias"])
 @router.post("", response_model=GuiaOut, status_code=201)
 def criar(dados: GuiaCreate, db: Session = Depends(get_db), user: User = Depends(usuario_atual)):
     guia = Guia(**dados.model_dump(exclude={"itens"}), operador_id=user.id)
-    if guia.tipo == "GUIA DE SAÍDA":
+    if guia.tipo.startswith("GUIA DE SAÍDA"):  # saída comum ou desfazimento
         guia.status = "pronta"
     for item in dados.itens:
         eq_id = None
@@ -29,7 +29,7 @@ def criar(dados: GuiaCreate, db: Session = Depends(get_db), user: User = Depends
 
 
 @router.get("", response_model=list[GuiaOut])
-def listar(tipo: Optional[Literal["GUIA DE ENTRADA", "GUIA DE SAÍDA"]] = None,
+def listar(tipo: Optional[Literal["GUIA DE ENTRADA", "GUIA DE SAÍDA", "GUIA DE SAÍDA - DESFAZIMENTO"]] = None,
            chamado: Optional[str] = Query(None, max_length=100),
            skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200),
            db: Session = Depends(get_db), _: User = Depends(usuario_atual)):

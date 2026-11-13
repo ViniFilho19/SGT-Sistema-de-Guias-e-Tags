@@ -117,8 +117,8 @@ class GuiaItemOut(GuiaItemIn):
 
 
 class GuiaCreate(Base):
-    tipo: Literal["GUIA DE ENTRADA", "GUIA DE SAÍDA"]
-    chamado: Optional[str] = Field(default=None, max_length=100)
+    tipo: Literal["GUIA DE ENTRADA", "GUIA DE SAÍDA", "GUIA DE SAÍDA - DESFAZIMENTO"]
+    chamado: str = Field(min_length=1, max_length=100)
     remetente: str = Field(max_length=200)
     destinatario: str = Field(max_length=200)
     responsavel: Optional[str] = Field(default=None, max_length=200)

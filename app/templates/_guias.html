@@ -2,7 +2,9 @@
 
 {# Badge do tipo da guia #}
 {% macro tipo(g) -%}
-<span class="badge {{ 'b-blue' if 'ENTRADA' in g.tipo else 'b-gray' }}">{{ "Entrada" if 'ENTRADA' in g.tipo else "Saída" }}</span>
+{% if 'ENTRADA' in g.tipo %}<span class="badge b-blue">Entrada</span>
+{% elif 'DESFAZIMENTO' in g.tipo %}<span class="badge b-red">Desfazimento</span>
+{% else %}<span class="badge b-gray">Saída</span>{% endif %}
 {%- endmacro %}
 
 {# Situação de entrega (só guias de saída) #}
