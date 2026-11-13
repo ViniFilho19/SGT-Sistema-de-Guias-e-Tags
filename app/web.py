@@ -27,6 +27,18 @@ COLS_ITEM = ("tipo_equipamento", "modelo", "patrimonio", "serial", "hostname", "
 LINHAS = 3  # linhas iniciais do formulário de guia (o botão + cria mais)
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")  # autoescape ligado
+STATIC = Path(__file__).parent / "static"
+
+
+def static_url(nome: str) -> str:
+    """URL do arquivo estático com ?v=<data de modificação>: o navegador baixa de novo quando o arquivo muda."""
+    try:
+        return f"/static/{nome}?v={int((STATIC / nome).stat().st_mtime)}"
+    except OSError:
+        return f"/static/{nome}"
+
+
+templates.env.globals["static_url"] = static_url
 router = APIRouter(include_in_schema=False)
 
 
