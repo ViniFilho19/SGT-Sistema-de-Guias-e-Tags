@@ -63,7 +63,7 @@
   {% for e in etiquetas %}<tr><td class="whitespace-nowrap">{{ e.data }}</td><td class="font-medium text-slate-900">{{ e.equipamento.hostname or "" }}</td>
     <td class="font-mono text-xs">{{ e.equipamento.ip or "" }}</td>
     <td>{{ e.equipamento.patrimonio or "" }}</td><td>{{ e.equipamento.serial or "" }}</td>
-    <td>{{ e.equipamento.localidade or "" }}</td><td>{{ e.operador.nome }}</td></tr>{% endfor %}
+    <td>{{ e.equipamento.localidade or "" }}</td><td>{% if e.operador_original %}{{ e.operador_original }} <span class="badge b-gray ml-1">planilha</span>{% else %}{{ e.operador.nome }}{% endif %}</td></tr>{% endfor %}
 </table></div></div>
 {% endif %}
 {% endblock %}

@@ -45,6 +45,7 @@ class Etiqueta(Base):
     operador_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
     oculta: Mapped[bool] = mapped_column(default=False, server_default="0")  # True = removida da lista de recentes
+    operador_original: Mapped[Optional[str]] = mapped_column(String(100))  # nome do operador em registros importados
     equipamento: Mapped[Equipamento] = relationship()
     operador: Mapped[User] = relationship()
 

@@ -16,3 +16,8 @@ data/
 
 # Tailwind CLI (binário baixado localmente)
 tools/
+
+# Planilhas de importação (podem conter dados pessoais)
+importar/
+*.csv
+*.xlsx

@@ -3,6 +3,9 @@ from sqlalchemy import inspect, text
 
 # tabela -> [(coluna, tipo SQL)]
 COLUNAS = {
+    "etiquetas": [
+        ("operador_original", "VARCHAR(100)"),
+    ],
     "guias": [
         ("status", "VARCHAR(20)"),
         ("entregue_por", "VARCHAR(200)"),
