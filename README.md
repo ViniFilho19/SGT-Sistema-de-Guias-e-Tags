@@ -5,7 +5,7 @@
     pip install -r requirements.txt
     cp .env.example .env        # edite SECRET_KEY
     python criar_admin.py       # cria o primeiro administrador
-    uvicorn app.main:app --reload
+    uvicorn app.main:app --reload   # ou: .venvScriptspython.exe -m uvicorn app.main:app --reload
 
 Sistema: http://localhost:8000  ·  API (Swagger): http://localhost:8000/docs
 
