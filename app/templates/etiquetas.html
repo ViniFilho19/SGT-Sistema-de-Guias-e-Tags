@@ -1,40 +1,52 @@
-{% extends "base.html" %}{% block title %}Etiquetas{% endblock %}
-{% block voltar %}<a class="btn ghost" href="/">← Voltar</a>{% endblock %}
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}
+{% block title %}Etiquetas{% endblock %}
 {% block content %}
-<div class="cols">
-  <form class="card noprint" method="post" action="/etiquetas">
-    <h2>Criar nova etiqueta</h2>
-    {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
-    <div class="form-grid">
-      <label>Hostname*<input name="hostname" value="{{ v.hostname }}" required></label>
-      <label>Endereço IP*<input name="ip" value="{{ v.ip }}" required></label>
-      <label>Patrimônio*<input name="patrimonio" value="{{ v.patrimonio }}" required></label>
-      <label>Nº de série*<input name="serial" value="{{ v.serial }}" required></label>
-      <label>Localidade*<input name="localidade" value="{{ v.localidade }}" required></label>
-      <label>Máscara de sub-rede<input name="mascara" value="{{ v.mascara }}"></label>
-      <label>Gateway padrão<input name="gateway" value="{{ v.gateway }}"></label>
-    </div><br>
-    <button class="btn">Criar etiqueta</button>
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4 print:hidden">
+  {{ cabecalho("Etiquetas", "Cadastre o equipamento e gere a etiqueta com QR code para impressão.") }}
+</div>
+
+<div class="grid items-start gap-6 lg:grid-cols-5">
+  <form class="card lg:col-span-2 print:hidden" method="post" action="/etiquetas">
+    <h2 class="section-title mb-5 flex items-center gap-2">{{ icone("mais", "size-5 text-brand-600") }}Nova etiqueta</h2>
+    {{ alertas(erro) }}
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label>Hostname <span class="sr-only">(obrigatório)</span><input name="hostname" value="{{ v.hostname }}" required></label>
+      <label>Endereço IP<input name="ip" value="{{ v.ip }}" required inputmode="decimal" placeholder="10.0.0.1"></label>
+      <label>Patrimônio<input name="patrimonio" value="{{ v.patrimonio }}" required></label>
+      <label>Nº de série<input name="serial" value="{{ v.serial }}" required></label>
+      <label class="sm:col-span-2">Localidade<input name="localidade" value="{{ v.localidade }}" required></label>
+      <label>Máscara de sub-rede <span class="text-xs font-normal text-slate-400">opcional</span><input name="mascara" value="{{ v.mascara }}" inputmode="decimal"></label>
+      <label>Gateway padrão <span class="text-xs font-normal text-slate-400">opcional</span><input name="gateway" value="{{ v.gateway }}" inputmode="decimal"></label>
+    </div>
+    <button class="btn mt-6 w-full">{{ icone("qr", "size-4") }}Criar etiqueta</button>
   </form>
 
-  <section class="card">
-    <div class="bar noprint"><h2 style="margin:0">Etiquetas recentes</h2>
-      {% if etiquetas %}<div class="actions">
-        <form method="post" action="/etiquetas/limpar" style="margin:0"
-              onsubmit="return confirm('Limpar todas as etiquetas desta lista? O histórico continua salvo.')">
-          <button class="btn ghost">Limpar lista</button></form>
-        <button class="btn" data-print>Imprimir etiquetas</button>
-      </div>{% endif %}</div>
-    <div class="etqs">
+  <section class="card lg:col-span-3">
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <h2 class="section-title">Etiquetas recentes {% if etiquetas %}<span class="badge b-gray ml-1">{{ etiquetas|length }}</span>{% endif %}</h2>
+      {% if etiquetas %}<div class="flex flex-wrap gap-2">
+        <form method="post" action="/etiquetas/limpar" data-confirm="Limpar todas as etiquetas desta lista? O histórico continua salvo.">
+          <button class="btn btn-ghost btn-sm">{{ icone("limpar", "size-4") }}Limpar lista</button></form>
+        <button class="btn btn-sm" data-print>{{ icone("imprimir", "size-4") }}Imprimir etiquetas</button>
+      </div>{% endif %}
+    </div>
+    <div class="flex flex-wrap gap-3">
     {% for e in etiquetas %}
-      <div class="etq" style="position:relative"><img class="lg" src="/static/logo.svg" alt="">
+      <div class="etq group">
+        <img class="lg" src="/static/logo.svg" alt="">
         <div class="tx"><b>{{ e.eq.hostname }}</b><br>{{ e.eq.ip }}<br>{{ e.eq.localidade }}</div>
         <img class="qr" src="{{ e.qr }}" alt="QR {{ e.eq.hostname }}">
-        <form class="noprint" method="post" action="/etiquetas/{{ e.id }}/ocultar"
-              style="position:absolute;top:-10px;right:-10px;margin:0">
-          <button class="btn ghost sm" title="Remover da lista" aria-label="Remover etiqueta {{ e.eq.hostname }} da lista"
-                  style="padding:0 7px;line-height:1.5;border-radius:999px;background:#fff">×</button></form></div>
-    {% else %}<p class="noprint" style="color:var(--muted)">Nenhuma etiqueta criada ainda.</p>{% endfor %}
+        <form class="absolute -top-2.5 -right-2.5 print:hidden" method="post" action="/etiquetas/{{ e.id }}/ocultar">
+          <button class="grid size-6 cursor-pointer place-items-center rounded-full border border-slate-300 bg-white text-slate-500 shadow-sm transition hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                  title="Remover da lista" aria-label="Remover etiqueta {{ e.eq.hostname }} da lista">{{ icone("fechar", "size-3.5") }}</button></form>
+      </div>
+    {% else %}
+      <div class="w-full rounded-xl border-2 border-dashed border-slate-200 px-6 py-12 text-center print:hidden">
+        <span class="mx-auto grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400">{{ icone("etiqueta", "size-6") }}</span>
+        <p class="mt-3 font-medium text-slate-700">Nenhuma etiqueta na lista</p>
+        <p class="text-sm text-slate-500">Preencha o formulário ao lado para criar a primeira.</p>
+      </div>
+    {% endfor %}
     </div>
   </section>
 </div>

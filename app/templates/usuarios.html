@@ -1,43 +1,49 @@
-{% extends "base.html" %}{% block title %}Usuários{% endblock %}
-{% block voltar %}<a class="btn ghost" href="/">← Voltar</a>{% endblock %}
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}
+{% block title %}Usuários{% endblock %}
 {% block content %}
-<div class="bar"><h1>Usuários</h1></div>
+<div class="mb-6">{{ cabecalho("Usuários", "Gerencie quem acessa o sistema e o que cada um pode fazer.") }}</div>
+{{ alertas(erro, ok) }}
 
-{% if ok %}<div style="background:#e6f6ec;color:#1b7a43;border-radius:10px;padding:10px 14px;margin-bottom:14px">{{ ok }}</div>{% endif %}
-{% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+<div class="grid items-start gap-6 lg:grid-cols-3">
+  <form class="card" method="post" action="/usuarios" autocomplete="off">
+    <h2 class="section-title mb-5 flex items-center gap-2">{{ icone("mais", "size-5 text-brand-600") }}Novo usuário</h2>
+    <div class="space-y-4">
+      <label>Usuário (login)<input name="username" value="{{ v.username }}" required minlength="3" maxlength="50" pattern="[a-zA-Z0-9._\-]+" autocomplete="off"></label>
+      <label>Nome completo<input name="nome" value="{{ v.nome }}" required minlength="2" maxlength="100"></label>
+      <label>Senha <span class="text-xs font-normal text-slate-400">mín. 8 caracteres</span><input name="senha" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+      <label>Papel<select name="papel">
+        {% for p in papeis %}<option value="{{ p }}" {{ "selected" if v.papel == p }}>{{ p|capitalize }}</option>{% endfor %}</select></label>
+    </div>
+    <button class="btn mt-6 w-full">Criar usuário</button>
+    <div class="mt-5 space-y-1 rounded-xl bg-slate-50 p-4 text-xs text-slate-600">
+      <p><b class="text-slate-800">Operador:</b> emite etiquetas e guias e consulta o cadastro.</p>
+      <p><b class="text-slate-800">Admin:</b> tudo isso, mais o gerenciamento de usuários.</p>
+    </div>
+  </form>
 
-<form class="card" method="post" action="/usuarios" autocomplete="off">
-  <h2>Novo usuário</h2>
-  <div class="form-grid">
-    <label>Usuário (login)*<input name="username" value="{{ v.username }}" required minlength="3" maxlength="50" pattern="[a-zA-Z0-9._\-]+" autocomplete="off"></label>
-    <label>Nome completo*<input name="nome" value="{{ v.nome }}" required minlength="2" maxlength="100"></label>
-    <label>Senha* (mín. 8 caracteres)<input name="senha" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
-    <label>Papel<select name="papel">
-      {% for p in papeis %}<option value="{{ p }}" {{ "selected" if v.papel == p }}>{{ p|capitalize }}</option>{% endfor %}</select></label>
-  </div><br>
-  <button class="btn">Criar usuário</button>
-  <p style="color:var(--muted);font-size:14px;margin-bottom:0">
-    <b>Operador:</b> emite etiquetas e guias e consulta o cadastro. <b>Admin:</b> tudo isso, mais o gerenciamento de usuários.</p>
-</form>
-
-<h3 style="margin:26px 0 10px">Usuários cadastrados</h3>
-<div class="card scroll"><table>
-  <tr><th>Login</th><th>Nome</th><th>Papel</th><th>Status</th><th>Redefinir senha</th><th></th></tr>
-  {% for u in usuarios %}<tr>
-    <td>{{ u.username }}{% if u.id == user.id %} <span class="badge b-blue">você</span>{% endif %}</td>
-    <td>{{ u.nome }}</td>
-    <td>{% if u.id == user.id %}{{ u.papel|capitalize }}{% else %}
-      <form method="post" action="/usuarios/{{ u.id }}/papel" style="display:inline-flex;gap:6px;margin:0">
-        <select name="papel">{% for p in papeis %}<option value="{{ p }}" {{ "selected" if u.papel == p }}>{{ p|capitalize }}</option>{% endfor %}</select>
-        <button class="btn ghost sm">Salvar</button></form>{% endif %}</td>
-    <td><span class="badge {{ 'b-green' if u.ativo else 'b-orange' }}">{{ "Ativo" if u.ativo else "Inativo" }}</span></td>
-    <td><form method="post" action="/usuarios/{{ u.id }}/senha" style="display:inline-flex;gap:6px;margin:0">
-        <input name="senha" type="password" placeholder="Nova senha" required minlength="8" maxlength="72" autocomplete="new-password" style="width:150px">
-        <button class="btn ghost sm">Redefinir</button></form></td>
-    <td>{% if u.id != user.id %}
-      <form method="post" action="/usuarios/{{ u.id }}/ativo" style="margin:0"
-            {% if u.ativo %}onsubmit="return confirm('Desativar {{ u.username }}? Ele perde o acesso imediatamente.')"{% endif %}>
-        <button class="btn {{ 'danger' if u.ativo else 'ghost' }} sm">{{ "Desativar" if u.ativo else "Ativar" }}</button></form>{% endif %}</td>
-  </tr>{% endfor %}
-</table></div>
+  <section class="card overflow-hidden p-0 lg:col-span-2">
+    <h2 class="section-title px-6 pt-5 pb-4">Usuários cadastrados <span class="badge b-gray ml-1">{{ usuarios|length }}</span></h2>
+    <div class="overflow-x-auto"><table class="tabela">
+      <tr><th>Usuário</th><th>Papel</th><th>Status</th><th>Redefinir senha</th><th></th></tr>
+      {% for u in usuarios %}<tr>
+        <td><div class="flex items-center gap-3">
+          <span class="grid size-8 shrink-0 place-items-center rounded-full {{ 'bg-brand-100 text-brand-700' if u.ativo else 'bg-slate-100 text-slate-400' }} text-xs font-bold">{{ u.nome[:1]|upper }}</span>
+          <div><p class="font-medium text-slate-900">{{ u.nome }}{% if u.id == user.id %} <span class="badge b-blue ml-1">você</span>{% endif %}</p>
+            <p class="text-xs text-slate-500">{{ u.username }}</p></div></div></td>
+        <td>{% if u.id == user.id %}{{ u.papel|capitalize }}{% else %}
+          <form method="post" action="/usuarios/{{ u.id }}/papel" class="flex gap-1.5">
+            <select name="papel" class="w-auto py-1.5" aria-label="Papel de {{ u.username }}">{% for p in papeis %}<option value="{{ p }}" {{ "selected" if u.papel == p }}>{{ p|capitalize }}</option>{% endfor %}</select>
+            <button class="btn btn-ghost btn-sm">Salvar</button></form>{% endif %}</td>
+        <td><span class="badge {{ 'b-green' if u.ativo else 'b-gray' }}">{{ "Ativo" if u.ativo else "Inativo" }}</span></td>
+        <td><form method="post" action="/usuarios/{{ u.id }}/senha" class="flex gap-1.5">
+            <input name="senha" type="password" placeholder="Nova senha" required minlength="8" maxlength="72" autocomplete="new-password" class="w-36 py-1.5" aria-label="Nova senha de {{ u.username }}">
+            <button class="btn btn-ghost btn-sm">Redefinir</button></form></td>
+        <td class="text-right">{% if u.id != user.id %}
+          <form method="post" action="/usuarios/{{ u.id }}/ativo"
+                {% if u.ativo %}data-confirm="Desativar {{ u.username }}? O acesso é bloqueado imediatamente."{% endif %}>
+            <button class="btn {{ 'btn-ghost text-red-600 hover:bg-red-50' if u.ativo else 'btn-ghost' }} btn-sm">{{ "Desativar" if u.ativo else "Ativar" }}</button></form>{% endif %}</td>
+      </tr>{% endfor %}
+    </table></div>
+  </section>
+</div>
 {% endblock %}

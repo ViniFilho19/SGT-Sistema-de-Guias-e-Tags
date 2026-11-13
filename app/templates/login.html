@@ -1,10 +1,21 @@
-{% extends "base.html" %}{% block title %}Entrar{% endblock %}
+{% extends "base.html" %}{% from "_icones.html" import alertas %}
+{% block title %}Entrar{% endblock %}
 {% block content %}
-<form class="card login" method="post" action="/login">
-  <h2>Entrar</h2>
-  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
-  <label>Usuário<input name="username" autocomplete="username" required autofocus></label><br>
-  <label>Senha<input name="password" type="password" autocomplete="current-password" required></label><br>
-  <button class="btn" style="width:100%">Acessar</button>
-</form>
+<div class="flex min-h-[75vh] items-center justify-center">
+  <div class="w-full max-w-sm">
+    <div class="mb-8 text-center">
+      <img src="/static/logo.svg" alt="" class="mx-auto size-16">
+      <p class="mt-4 text-[11px] font-semibold tracking-[.25em] text-brand-600">DETRAN BAHIA</p>
+      <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">Entrar no SGT</h1>
+      <p class="page-sub">Sistema de Guias e Tags</p>
+    </div>
+    <form class="card space-y-5 shadow-lg shadow-slate-200/60" method="post" action="/login">
+      {{ alertas(erro) }}
+      <label>Usuário<input name="username" autocomplete="username" required autofocus></label>
+      <label>Senha<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="btn w-full py-2.5">Acessar</button>
+    </form>
+    <p class="mt-6 text-center text-xs text-slate-400">CTI · Service Desk — DETRAN-BA</p>
+  </div>
+</div>
 {% endblock %}

@@ -13,3 +13,6 @@ wheels/
 # Banco de dados local e dados
 *.db
 data/
+
+# Tailwind CLI (binário baixado localmente)
+tools/

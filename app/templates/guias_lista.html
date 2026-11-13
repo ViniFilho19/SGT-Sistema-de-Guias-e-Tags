@@ -1,13 +1,20 @@
-{% extends "base.html" %}{% block title %}Guias{% endblock %}
-{% block voltar %}<a class="btn ghost" href="/">← Voltar</a>{% endblock %}
+{% extends "base.html" %}{% from "_icones.html" import icone, cabecalho %}
+{% block title %}Guias{% endblock %}
 {% block content %}
-<div class="bar"><h1>Guias emitidas</h1><a class="btn" href="/guias/nova">+ Nova guia</a></div>
-<div class="card scroll"><table>
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  {{ cabecalho("Guias emitidas", "Reabra e reimprima guias de entrada e saída já registradas.") }}
+  <a class="btn" href="/guias/nova">{{ icone("mais", "size-4") }}Nova guia</a>
+</div>
+<div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
   <tr><th>Nº</th><th>Data</th><th>Tipo</th><th>Chamado</th><th>Remetente → Destinatário</th><th>Itens</th><th></th></tr>
-  {% for g in guias %}<tr><td>{{ g.id }}</td><td>{{ g.data }}</td>
+  {% for g in guias %}<tr>
+    <td class="font-semibold text-slate-900">{{ g.id }}</td><td class="whitespace-nowrap">{{ g.data }}</td>
     <td><span class="badge {{ 'b-green' if 'ENTRADA' in g.tipo else 'b-orange' }}">{{ g.tipo }}</span></td>
-    <td>{{ g.chamado or "—" }}</td><td>{{ g.remetente }} → {{ g.destinatario }}</td><td>{{ g.itens|length }}</td>
-    <td><a class="btn ghost sm" href="/guias/{{ g.id }}">Abrir</a></td></tr>
-  {% else %}<tr><td colspan="7">Nenhuma guia emitida.</td></tr>{% endfor %}
-</table></div>
+    <td>{{ g.chamado or "—" }}</td><td>{{ g.remetente }} <span class="text-slate-400">→</span> {{ g.destinatario }}</td>
+    <td><span class="badge b-gray">{{ g.itens|length }}</span></td>
+    <td class="text-right"><a class="btn btn-ghost btn-sm" href="/guias/{{ g.id }}">Abrir{{ icone("seta", "size-3.5") }}</a></td></tr>
+  {% else %}<tr><td colspan="7" class="py-14 text-center text-slate-500">
+    <span class="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400">{{ icone("guia", "size-6") }}</span>
+    Nenhuma guia emitida ainda. <a href="/guias/nova" class="font-medium text-brand-700 hover:underline">Emitir a primeira</a></td></tr>{% endfor %}
+</table></div></div>
 {% endblock %}

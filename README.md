@@ -10,10 +10,20 @@
 Sistema: http://localhost:8000  ·  API (Swagger): http://localhost:8000/docs
 
 ## Interface web
-Telas em `app/templates` (Jinja2) e estilo em `app/static/app.css`, no padrão visual do painel SAS:
+Telas em `app/templates` (Jinja2) estilizadas com **Tailwind CSS v4**. O CSS de origem fica em `app/assets/tailwind.css`
+e é compilado para `app/static/app.css` (arquivo gerado, versionado para o sistema rodar sem build).
+
+Para alterar o visual, baixe o Tailwind CLI standalone (não precisa de Node) em `tools/` e recompile:
+
+    mkdir tools
+    curl -L -o tools/tailwindcss.exe https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.11/tailwindcss-windows-x64.exe
+    tools	ailwindcss.exe -i app/assets/tailwind.css -o app/static/app.css --minify          # gera uma vez
+    tools	ailwindcss.exe -i app/assets/tailwind.css -o app/static/app.css --watch           # recompila ao salvar
+
+Telas:
 login, painel, etiquetas (com QR e impressão), nova guia, guias emitidas (2 vias para impressão) e equipamentos.
 Sessão por cookie HttpOnly + SameSite=Strict; em produção com HTTPS defina `COOKIE_SEGURO=true`.
-CSP restritiva (`script-src 'self'`): o único JS é `static/print.js` (botão imprimir).
+CSP restritiva (`script-src 'self'`): sem JS inline; `static/app.js` cuida de imprimir e das confirmações (`data-confirm`).
 
 ## API REST (prefixo `/api`)
 | Método | Rota | Descrição |

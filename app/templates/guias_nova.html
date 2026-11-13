@@ -1,37 +1,44 @@
-{% extends "base.html" %}{% block title %}Nova guia{% endblock %}
-{% block voltar %}<a class="btn ghost" href="/">← Voltar</a>{% endblock %}
-
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}
+{% block title %}Nova guia{% endblock %}
 {% block content %}
+<div class="mb-6">{{ cabecalho("Nova guia", "Emita uma guia de entrada ou saída com os equipamentos movimentados.") }}</div>
 
-<form class="card" method="post" action="/guias/nova">
-  <h2>Gerar guia</h2>
-  {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
-  <div class="form-grid">
-    <label>Tipo de guia<select name="tipo">
-      {% for t in ["GUIA DE SAÍDA","GUIA DE ENTRADA"] %}<option {{ "selected" if v.tipo==t }}>{{ t }}</option>{% endfor %}</select></label>
-    <label>Número de chamado<input name="chamado" value="{{ v.chamado }}"></label>
-    <label>Setor remetente<input name="remetente" value="{{ v.remetente }}" placeholder="Saída: CTI - SERVICE DESK (automático)"></label>
-    <label>Destinatário<input name="destinatario" value="{{ v.destinatario }}" placeholder="Entrada: CTI - SERVICE DESK (automático)"></label>
-    <label>Responsável CTI<input name="responsavel" value="{{ v.responsavel }}" placeholder="Deixe em branco para preencher à mão"></label>
+<form method="post" action="/guias/nova" class="space-y-6">
+  {{ alertas(erro) }}
+  <section class="card">
+    <h2 class="section-title mb-5 flex items-center gap-2"><span class="grid size-6 place-items-center rounded-full bg-brand-700 text-xs font-bold text-white">1</span>Dados da guia</h2>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label>Tipo de guia<select name="tipo">
+        {% for t in ["GUIA DE SAÍDA","GUIA DE ENTRADA"] %}<option {{ "selected" if v.tipo==t }}>{{ t }}</option>{% endfor %}</select></label>
+      <label>Número de chamado<input name="chamado" value="{{ v.chamado }}"></label>
+      <label>Responsável CTI<input name="responsavel" value="{{ v.responsavel }}" placeholder="Em branco = preencher à mão"></label>
+      <label>Setor remetente<input name="remetente" value="{{ v.remetente }}" placeholder="Saída: CTI - SERVICE DESK (automático)"></label>
+      <label>Destinatário<input name="destinatario" value="{{ v.destinatario }}" placeholder="Entrada: CTI - SERVICE DESK (automático)"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title flex items-center gap-2"><span class="grid size-6 place-items-center rounded-full bg-brand-700 text-xs font-bold text-white">2</span>Equipamentos</h2>
+    <p class="mt-1 mb-5 text-sm text-slate-500">Uma linha por equipamento; linhas vazias são ignoradas. Ao digitar um patrimônio já cadastrado, o sistema oferece preencher o restante.</p>
+    <div class="-mx-6 overflow-x-auto border-y border-slate-100"><table id="tabela-equipamentos" class="tabela tabela-input min-w-[900px]">
+      <tr><th class="w-40">Tipo</th><th>Modelo/Marca</th><th>Patrimônio</th><th>Nº série</th><th>Hostname</th><th>IP</th><th class="w-20"></th></tr>
+      {% for l in linhas %}<tr class="linha-eq align-top">
+        <td><select name="tipo_equipamento">{% for t in tipos %}<option {{ "selected" if l.tipo_equipamento==t }}>{{ t }}</option>{% endfor %}</select></td>
+        <td><input name="modelo" value="{{ l.modelo }}"></td>
+        <td><input name="patrimonio" value="{{ l.patrimonio }}" autocomplete="off">
+          <div class="sugestao mt-1 text-xs leading-snug text-slate-500"></div></td>
+        <td><input name="serial" value="{{ l.serial }}"></td><td><input name="hostname" value="{{ l.hostname }}"></td>
+        <td><input name="ip" value="{{ l.ip }}" inputmode="decimal"></td>
+        <td class="whitespace-nowrap">
+          <button type="button" class="btn btn-ghost btn-icon" data-acao="limpar" title="Limpar linha" aria-label="Limpar linha">{{ icone("limpar", "size-4") }}</button>
+          <button type="button" class="btn btn-ghost btn-icon hover:text-red-600" data-acao="apagar" title="Apagar linha" aria-label="Apagar linha">{{ icone("lixo", "size-4") }}</button></td></tr>{% endfor %}
+    </table></div>
+    <button type="button" class="btn btn-ghost mt-4" id="add-linha" title="Adicionar mais um equipamento">{{ icone("mais", "size-4") }}Adicionar equipamento</button>
+  </section>
+
+  <div class="flex justify-end">
+    <button class="btn px-6 py-2.5">{{ icone("guia", "size-4") }}Salvar e abrir guia</button>
   </div>
-  <h3 style="margin-top:26px">Equipamentos</h3>
-  <p style="color:var(--muted);font-size:14px;margin-top:0">Preencha uma linha por equipamento; linhas vazias são ignoradas. Ao digitar um patrimônio já cadastrado, o sistema oferece preencher o restante.</p>
-  <div class="scroll"><table id="tabela-equipamentos">
-    <tr><th>Tipo</th><th>Modelo/Marca</th><th>Patrimônio</th><th>Nº série</th><th>Hostname</th><th>IP</th><th></th></tr>
-    {% for l in linhas %}<tr class="linha-eq">
-      <td><select name="tipo_equipamento">{% for t in tipos %}<option {{ "selected" if l.tipo_equipamento==t }}>{{ t }}</option>{% endfor %}</select></td>
-      <td><input name="modelo" value="{{ l.modelo }}"></td>
-      <td><input name="patrimonio" value="{{ l.patrimonio }}" autocomplete="off">
-        <div class="sugestao" style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.35"></div></td>
-      <td><input name="serial" value="{{ l.serial }}"></td><td><input name="hostname" value="{{ l.hostname }}"></td>
-      <td><input name="ip" value="{{ l.ip }}"></td>
-      <td style="white-space:nowrap">
-        <button type="button" class="btn ghost sm" data-acao="limpar" title="Limpar linha" aria-label="Limpar linha">⌫</button>
-        <button type="button" class="btn ghost sm" data-acao="apagar" title="Apagar linha" aria-label="Apagar linha">×</button></td></tr>{% endfor %}
-  </table></div>
-  <div style="margin-top:12px"><button type="button" class="btn ghost" id="add-linha" title="Adicionar mais um equipamento">+ Adicionar equipamento</button></div>
-  <br>
-  <button class="btn">Salvar e abrir guia</button>
 </form>
 <script src="/static/guia_form.js"></script>
 {% endblock %}

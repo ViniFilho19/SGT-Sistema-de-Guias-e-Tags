@@ -1,12 +1,23 @@
-{% extends "base.html" %}{% block title %}Equipamentos{% endblock %}
-{% block voltar %}<a class="btn ghost" href="/">← Voltar</a>{% endblock %}
+{% extends "base.html" %}{% from "_icones.html" import icone, cabecalho %}
+{% block title %}Equipamentos{% endblock %}
 {% block content %}
-<div class="bar"><h1>Equipamentos</h1>
-  <form method="get" class="actions"><input name="q" value="{{ q }}" placeholder="Patrimônio, série, hostname ou IP" style="width:300px"><button class="btn">Buscar</button></form></div>
-<div class="card scroll"><table>
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  {{ cabecalho("Equipamentos", "Cadastro de equipamentos com etiqueta ou guia emitida.") }}
+  <form method="get" class="flex w-full gap-2 sm:w-auto" role="search">
+    <div class="relative flex-1 sm:w-80">
+      <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">{{ icone("buscar", "size-4") }}</span>
+      <input name="q" value="{{ q }}" placeholder="Patrimônio, série, hostname ou IP" class="pl-9" aria-label="Buscar equipamento">
+    </div>
+    <button class="btn">Buscar</button>
+  </form>
+</div>
+<div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
   <tr><th>Tipo</th><th>Modelo</th><th>Patrimônio</th><th>Nº série</th><th>Hostname</th><th>IP</th><th>Localidade</th></tr>
-  {% for e in itens %}<tr><td>{{ e.tipo }}</td><td>{{ e.modelo or "" }}</td><td>{{ e.patrimonio or "" }}</td><td>{{ e.serial or "" }}</td>
-    <td>{{ e.hostname or "" }}</td><td>{{ e.ip or "" }}</td><td>{{ e.localidade or "" }}</td></tr>
-  {% else %}<tr><td colspan="7">Nenhum equipamento encontrado.</td></tr>{% endfor %}
-</table></div>
+  {% for e in itens %}<tr><td><span class="badge b-blue">{{ e.tipo }}</span></td><td>{{ e.modelo or "" }}</td>
+    <td class="font-medium text-slate-900">{{ e.patrimonio or "" }}</td><td>{{ e.serial or "" }}</td>
+    <td>{{ e.hostname or "" }}</td><td class="font-mono text-xs">{{ e.ip or "" }}</td><td>{{ e.localidade or "" }}</td></tr>
+  {% else %}<tr><td colspan="7" class="py-14 text-center text-slate-500">
+    <span class="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400">{{ icone("buscar", "size-6") }}</span>
+    Nenhum equipamento encontrado{% if q %} para “{{ q }}”. <a href="/equipamentos" class="font-medium text-brand-700 hover:underline">Limpar busca</a>{% else %}.{% endif %}</td></tr>{% endfor %}
+</table></div></div>
 {% endblock %}

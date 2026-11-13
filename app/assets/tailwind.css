@@ -1,0 +1,111 @@
+/* Fonte do CSS. NÃO edite app/static/app.css (é gerado). Compilar:
+   tools\tailwindcss.exe -i app/assets/tailwind.css -o app/static/app.css --minify        (use --watch ao desenvolver) */
+@import "tailwindcss";
+@source "../templates";
+@source "../static/*.js";
+
+@theme {
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --color-brand-50: #eff5ff;
+  --color-brand-100: #dbe7fe;
+  --color-brand-200: #bfd4fe;
+  --color-brand-300: #93b7fb;
+  --color-brand-500: #2b6fd6;
+  --color-brand-600: #1d58c4;
+  --color-brand-700: #0d47a1;
+  --color-brand-800: #123b84;
+  --color-brand-900: #14306a;
+  --color-ouro: #e8b923;
+}
+
+@layer base {
+  body { @apply bg-slate-50 text-slate-700 antialiased; }
+  label { @apply flex flex-col gap-1.5 text-sm font-medium text-slate-700; }
+  input, select {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs
+           transition placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold
+           whitespace-nowrap text-white shadow-sm transition hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-brand-500 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-ghost { @apply bg-white text-slate-700 shadow-xs ring-1 ring-slate-300 ring-inset hover:bg-slate-50; }
+  .btn-danger { @apply bg-red-600 hover:bg-red-700; }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+  .btn-icon { @apply size-8 p-0; }
+
+  .card { @apply rounded-2xl border border-slate-200 bg-white p-6 shadow-sm; }
+  .page-title { @apply text-2xl font-bold tracking-tight text-slate-900; }
+  .page-sub { @apply mt-1 text-sm text-slate-500; }
+  .section-title { @apply text-base font-semibold text-slate-900; }
+
+  .nav-link {
+    @apply inline-flex items-center gap-2 border-b-2 border-transparent px-3 py-3 text-sm font-medium whitespace-nowrap
+           text-slate-500 transition hover:border-slate-300 hover:text-slate-900;
+  }
+  .nav-ativo { @apply border-brand-600 text-brand-700 hover:border-brand-600 hover:text-brand-700; }
+
+  .tile {
+    @apply relative flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition
+           hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md;
+  }
+  .tile-icone {
+    @apply grid size-11 place-items-center rounded-xl bg-brand-50 text-brand-700 transition;
+  }
+  .tile:hover .tile-icone { @apply bg-brand-700 text-white; }
+
+  .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset; }
+  .b-blue { @apply bg-brand-50 text-brand-700 ring-brand-200; }
+  .b-green { @apply bg-emerald-50 text-emerald-700 ring-emerald-600/20; }
+  .b-orange { @apply bg-amber-50 text-amber-800 ring-amber-600/25; }
+  .b-red { @apply bg-red-50 text-red-700 ring-red-600/20; }
+  .b-gray { @apply bg-slate-100 text-slate-600 ring-slate-500/20; }
+
+  .alerta { @apply mb-5 flex items-start gap-2 rounded-xl px-4 py-3 text-sm ring-1 ring-inset; }
+  .alerta-erro { @apply bg-red-50 text-red-800 ring-red-200; }
+  .alerta-ok { @apply bg-emerald-50 text-emerald-800 ring-emerald-200; }
+
+  .tabela { @apply w-full text-left text-sm; }
+  .tabela th { @apply bg-slate-50 px-4 py-3 text-xs font-semibold tracking-wide whitespace-nowrap text-slate-500 uppercase; }
+  .tabela td { @apply border-t border-slate-100 px-4 py-3 align-middle text-slate-700; }
+  .tabela tr:hover td { @apply bg-slate-50/70; }
+  .tabela-input td { @apply px-2 py-2; }
+  .tabela-input tr:hover td { @apply bg-transparent; }
+}
+
+/* ---------- Etiqueta física (300x100 px) e guia impressa: medidas fixas para impressão ---------- */
+.etq { position: relative; border: 1px solid #000; width: 300px; height: 100px; display: flex; align-items: center;
+  gap: 8px; padding: 6px 8px; background: #fff; color: #000; break-inside: avoid; }
+.etq img.lg { height: 46px; width: auto; }
+.etq .tx { flex: 1; text-align: center; font-size: 13px; line-height: 1.25; }
+.etq .tx b { font-size: 20px; }
+.etq img.qr { width: 88px; height: 88px; }
+
+.folha { background: #fff; color: #000; max-width: 900px; margin: auto; }
+.via small { display: block; text-align: right; font-weight: 700; color: #666; font-size: 12px; }
+.via-h { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 10px; }
+.via-h img { height: 44px; width: auto; }
+.via-h h2 { margin: 0; font-size: 18px; font-weight: 700; color: var(--color-brand-700); }
+.dados { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.guia-t { width: 100%; border-collapse: collapse; }
+.guia-t th, .guia-t td { border: 1px solid #000; padding: 5px; text-align: center; font-size: 12px; }
+.guia-t th { background: #ddd; color: #000; font-weight: 700; }
+.assin { display: flex; gap: 20px; margin-top: 14px; }
+.assin div { flex: 1; font-size: 12px; }
+.assin h4 { margin: 0 0 6px; font-weight: 700; }
+.assin p { margin: 12px 0 0; white-space: nowrap; }
+.corte { border: 0; border-top: 1px dashed #000; margin: 18px 0; }
+
+@media (max-width: 640px) { .etq { width: 100%; } }
+
+@media print {
+  @page { margin: 6mm; }
+  body { background: #fff; }
+  .noprint { display: none !important; }
+  .card { border: 0; box-shadow: none; padding: 0; border-radius: 0; }
+  .folha { max-width: none; }
+}

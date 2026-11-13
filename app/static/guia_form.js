@@ -81,9 +81,8 @@
     texto.textContent = "Cadastro: " + resumo;
     var botao = document.createElement("button");
     botao.type = "button";
-    botao.className = "btn ghost sm";
+    botao.className = "btn btn-ghost btn-sm ml-2 mt-1";
     botao.textContent = "Preencher lacunas";
-    botao.style.marginLeft = "6px";
     botao.addEventListener("click", function () {
       if (mudaTipo) campo(linha, "tipo_equipamento").value = d.tipo;
       falta.forEach(function (nome) { campo(linha, nome).value = d[nome]; });

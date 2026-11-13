@@ -1,66 +1,69 @@
-{% extends "base.html" %}{% block title %}Relatórios{% endblock %}
-{% block voltar %}<a class="btn ghost" href="/">← Voltar</a>{% endblock %}
+{% extends "base.html" %}{% from "_icones.html" import icone, cabecalho %}
+{% block title %}Relatórios{% endblock %}
+{% macro stat(rotulo, valor, ic, cor="bg-brand-50 text-brand-700") %}
+<div class="card flex items-center gap-4 p-5">
+  <span class="grid size-12 place-items-center rounded-xl {{ cor }} print:hidden">{{ icone(ic, "size-6") }}</span>
+  <div><p class="text-sm text-slate-500">{{ rotulo }}</p><p class="text-3xl font-bold tracking-tight text-slate-900">{{ valor }}</p></div>
+</div>
+{% endmacro %}
 {% block content %}
-{% macro stat(rotulo, valor) %}<div class="card"><div style="color:var(--muted);font-size:14px">{{ rotulo }}</div>
-  <div style="font-size:34px;font-weight:700;margin-top:4px">{{ valor }}</div></div>{% endmacro %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  {{ cabecalho("Relatórios", "Movimentação de " ~ titulo ~ " · " ~ tipo_txt) }}
+  <button class="btn btn-ghost print:hidden" data-print>{{ icone("imprimir", "size-4") }}Imprimir relatório</button>
+</div>
 
-<div class="bar noprint"><h1>Relatórios</h1><button class="btn" data-print>Imprimir relatório</button></div>
-
-<form class="card noprint" method="get" action="/relatorios">
-  <div class="form-grid">
-    <label>Mês/ano<input type="month" name="mes" value="{{ mes }}" required></label>
-    <label>Tipo<select name="tipo">
-      {% for valor, texto in opcoes %}<option value="{{ valor }}" {{ "selected" if valor == tipo }}>{{ texto }}</option>{% endfor %}</select></label>
-  </div><br>
+<form class="card mb-6 flex flex-wrap items-end gap-4 p-5 print:hidden" method="get" action="/relatorios">
+  <label class="w-full sm:w-48">Mês/ano<input type="month" name="mes" value="{{ mes }}" required></label>
+  <label class="w-full sm:w-56">Tipo<select name="tipo">
+    {% for valor, texto in opcoes %}<option value="{{ valor }}" {{ "selected" if valor == tipo }}>{{ texto }}</option>{% endfor %}</select></label>
   <button class="btn">Gerar relatório</button>
 </form>
 
-<h2 style="margin:24px 0 12px">Movimentação de {{ titulo }} <span style="color:var(--muted);font-weight:400;font-size:16px">· {{ tipo_txt }}</span></h2>
-
-<div class="grid3">
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
   {% if tipo != "etiquetas" %}
-    {{ stat("Guias emitidas", tot.guias) }}
-    {{ stat("Guias de entrada", tot.entrada) }}
-    {{ stat("Guias de saída", tot.saida) }}
-    {{ stat("Equipamentos movimentados", tot.itens) }}
+    {{ stat("Guias emitidas", tot.guias, "guia") }}
+    {{ stat("Guias de entrada", tot.entrada, "voltar", "bg-emerald-50 text-emerald-700") }}
+    {{ stat("Guias de saída", tot.saida, "seta", "bg-amber-50 text-amber-700") }}
+    {{ stat("Equipamentos movimentados", tot.itens, "equipamento") }}
   {% endif %}
-  {% if tipo != "guias" %}{{ stat("Etiquetas geradas", tot.etiquetas) }}{% endif %}
+  {% if tipo != "guias" %}{{ stat("Etiquetas geradas", tot.etiquetas, "etiqueta") }}{% endif %}
 </div>
 
-<h3 style="margin:26px 0 10px">Movimentação por dia</h3>
-<div class="card scroll"><table>
+<h2 class="section-title mt-10 mb-3">Movimentação por dia</h2>
+<div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
   <tr><th>Dia</th>
     {% if tipo != "etiquetas" %}<th>Guias de entrada</th><th>Guias de saída</th><th>Equipamentos</th>{% endif %}
     {% if tipo != "guias" %}<th>Etiquetas</th>{% endif %}</tr>
-  {% for d in tabela %}<tr><td>{{ d.dia }}</td>
+  {% for d in tabela %}<tr><td class="font-medium text-slate-900">{{ d.dia }}</td>
     {% if tipo != "etiquetas" %}<td>{{ d.entrada }}</td><td>{{ d.saida }}</td><td>{{ d.itens }}</td>{% endif %}
     {% if tipo != "guias" %}<td>{{ d.etiquetas }}</td>{% endif %}</tr>
-  {% else %}<tr><td colspan="5">Sem movimentação neste mês.</td></tr>{% endfor %}
-  {% if tabela %}<tr><th>Total</th>
-    {% if tipo != "etiquetas" %}<th>{{ tot.entrada }}</th><th>{{ tot.saida }}</th><th>{{ tot.itens }}</th>{% endif %}
-    {% if tipo != "guias" %}<th>{{ tot.etiquetas }}</th>{% endif %}</tr>{% endif %}
-</table></div>
+  {% else %}<tr><td colspan="5" class="py-10 text-center text-slate-500">Sem movimentação neste mês.</td></tr>{% endfor %}
+  {% if tabela %}<tr class="font-semibold"><td class="bg-slate-50 text-slate-900">Total</td>
+    {% if tipo != "etiquetas" %}<td class="bg-slate-50">{{ tot.entrada }}</td><td class="bg-slate-50">{{ tot.saida }}</td><td class="bg-slate-50">{{ tot.itens }}</td>{% endif %}
+    {% if tipo != "guias" %}<td class="bg-slate-50">{{ tot.etiquetas }}</td>{% endif %}</tr>{% endif %}
+</table></div></div>
 
 {% if tipo != "etiquetas" and guias %}
-<h3 style="margin:26px 0 10px">Guias do mês</h3>
-<div class="card scroll"><table>
-  <tr><th>Nº</th><th>Data</th><th>Tipo</th><th>Chamado</th><th>Remetente → Destinatário</th><th>Itens</th><th>Operador</th><th class="noprint"></th></tr>
-  {% for g in guias %}<tr><td>{{ g.id }}</td><td>{{ g.data }}</td>
+<h2 class="section-title mt-10 mb-3">Guias do mês</h2>
+<div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
+  <tr><th>Nº</th><th>Data</th><th>Tipo</th><th>Chamado</th><th>Remetente → Destinatário</th><th>Itens</th><th>Operador</th><th class="print:hidden"></th></tr>
+  {% for g in guias %}<tr><td class="font-semibold text-slate-900">{{ g.id }}</td><td class="whitespace-nowrap">{{ g.data }}</td>
     <td><span class="badge {{ 'b-green' if 'ENTRADA' in g.tipo else 'b-orange' }}">{{ g.tipo }}</span></td>
-    <td>{{ g.chamado or "—" }}</td><td>{{ g.remetente }} → {{ g.destinatario }}</td><td>{{ g.itens|length }}</td>
+    <td>{{ g.chamado or "—" }}</td><td>{{ g.remetente }} <span class="text-slate-400">→</span> {{ g.destinatario }}</td><td>{{ g.itens|length }}</td>
     <td>{{ g.operador.nome }}</td>
-    <td class="noprint"><a class="btn ghost sm" href="/guias/{{ g.id }}">Abrir</a></td></tr>{% endfor %}
-</table></div>
+    <td class="text-right print:hidden"><a class="btn btn-ghost btn-sm" href="/guias/{{ g.id }}">Abrir</a></td></tr>{% endfor %}
+</table></div></div>
 {% endif %}
 
 {% if tipo != "guias" and etiquetas %}
-<h3 style="margin:26px 0 10px">Etiquetas do mês</h3>
-<p style="color:var(--muted);font-size:14px;margin-top:0">Inclui etiquetas já removidas da lista de recentes.</p>
-<div class="card scroll"><table>
+<h2 class="section-title mt-10">Etiquetas do mês</h2>
+<p class="mb-3 text-sm text-slate-500">Inclui etiquetas já removidas da lista de recentes.</p>
+<div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
   <tr><th>Data</th><th>Hostname</th><th>IP</th><th>Patrimônio</th><th>Nº série</th><th>Localidade</th><th>Operador</th></tr>
-  {% for e in etiquetas %}<tr><td>{{ e.data }}</td><td>{{ e.equipamento.hostname or "" }}</td><td>{{ e.equipamento.ip or "" }}</td>
+  {% for e in etiquetas %}<tr><td class="whitespace-nowrap">{{ e.data }}</td><td class="font-medium text-slate-900">{{ e.equipamento.hostname or "" }}</td>
+    <td class="font-mono text-xs">{{ e.equipamento.ip or "" }}</td>
     <td>{{ e.equipamento.patrimonio or "" }}</td><td>{{ e.equipamento.serial or "" }}</td>
     <td>{{ e.equipamento.localidade or "" }}</td><td>{{ e.operador.nome }}</td></tr>{% endfor %}
-</table></div>
+</table></div></div>
 {% endif %}
 {% endblock %}
