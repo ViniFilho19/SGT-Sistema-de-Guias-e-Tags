@@ -14,6 +14,9 @@
       <label>Responsável CTI<input name="responsavel" value="{{ v.responsavel }}" placeholder="Em branco = preencher à mão"></label>
       <label>Setor remetente<input name="remetente" value="{{ v.remetente }}" placeholder="Saída: CTI - SERVICE DESK (automático)"></label>
       <label>Destinatário<input name="destinatario" value="{{ v.destinatario }}" placeholder="Entrada: CTI - SERVICE DESK (automático)"></label>
+      <label>Motivo<select name="motivo">
+        <option value="">Nenhum</option>
+        {% for m in motivos %}<option value="{{ m }}" {{ "selected" if v.motivo == m }}>{{ m|capitalize }}</option>{% endfor %}</select></label>
     </div>
   </section>
 

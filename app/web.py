@@ -15,7 +15,7 @@ from .database import get_db
 from .models import Equipamento, Etiqueta, Guia, User
 from .routers.etiquetas import gerar_etiqueta, qr_data_uri, texto_qr
 from .routers.guias import criar as criar_guia
-from .schemas import TIPOS_GUIA, EtiquetaCreate, GuiaCreate, UserCreate
+from .schemas import MOTIVOS, EtiquetaCreate, GuiaCreate, UserCreate
 from .security import (bloqueado, confere_senha, criar_token, hash_senha, limpar_falhas, registrar_falha,
                        usuario_por_token)
 
@@ -153,10 +153,10 @@ def etiqueta_ocultar(id_: int, db: Session = Depends(get_db), user: User = Depen
 
 # ---------- guias ----------
 def _form_guia(request, user, v=None, linhas=None, erro=None, status=200):
-    v = v or {"tipo": "GUIA DE SAÍDA", "chamado": "", "remetente": "", "destinatario": "", "responsavel": ""}
+    v = v or {"tipo": SAIDA, "motivo": "", "chamado": "", "remetente": "", "destinatario": "", "responsavel": ""}
     linhas = linhas or [{c: "" for c in COLS_ITEM} | {"tipo_equipamento": "Computador"} for _ in range(LINHAS)]
     return pagina(request, "guias_nova.html", user, status, v=v, linhas=linhas, tipos=TIPOS, erro=erro,
-                  tipos_guia=TIPOS_GUIA)
+                  tipos_guia=[SAIDA, ENTRADA], motivos=MOTIVOS)
 
 
 @router.get("/guias/nova")
@@ -167,7 +167,7 @@ def guia_nova(request: Request, user: User = Depends(usuario_web)):
 @router.post("/guias/nova")
 async def guia_criar(request: Request, db: Session = Depends(get_db), user: User = Depends(usuario_web)):
     f = await request.form()
-    v = {c: str(f.get(c, "")).strip() for c in ("tipo", "chamado", "remetente", "destinatario", "responsavel")}
+    v = {c: str(f.get(c, "")).strip() for c in ("tipo", "motivo", "chamado", "remetente", "destinatario", "responsavel")}
     linhas = [dict(zip(COLS_ITEM, (str(x).strip() for x in vals)))
               for vals in zip(*(f.getlist(c) for c in COLS_ITEM))]
     itens = [l for l in linhas if any(l[c] for c in COLS_ITEM[1:])]
@@ -177,8 +177,13 @@ async def guia_criar(request: Request, db: Session = Depends(get_db), user: User
         v["remetente"] = v["remetente"] or SD
     if not v["chamado"]:
         return _form_guia(request, user, v, linhas, "Informe o número do chamado.", 422)
+    if v["motivo"] and v["motivo"] not in MOTIVOS:
+        return _form_guia(request, user, v, linhas, "Motivo inválido.", 422)
+    # tipo gravado = tipo + motivo (ex.: "GUIA DE SAÍDA - MANUTENÇÃO")
+    campos = {k: val for k, val in v.items() if k != "motivo"}
+    campos["tipo"] = f"{v['tipo']} - {v['motivo']}" if v["motivo"] else v["tipo"]
     try:
-        dados = GuiaCreate(**v, itens=itens)
+        dados = GuiaCreate(**campos, itens=itens)
     except ValidationError:
         return _form_guia(request, user, v, linhas, "Verifique os campos e informe ao menos um equipamento (IP válido, se preenchido).", 422)
     guia = criar_guia(dados, db, user)
