@@ -116,8 +116,9 @@ class GuiaItemOut(GuiaItemIn):
     equipamento_id: Optional[int] = None
 
 
-MOTIVOS_SAIDA = ("MANUTENÇÃO", "SUBSTITUIÇÃO", "DESFAZIMENTO", "ADIÇÃO")
-TIPOS_GUIA = ("GUIA DE SAÍDA", *(f"GUIA DE SAÍDA - {m}" for m in MOTIVOS_SAIDA), "GUIA DE ENTRADA")
+MOTIVOS = ("MANUTENÇÃO", "SUBSTITUIÇÃO", "DESFAZIMENTO", "ADIÇÃO")
+TIPOS_GUIA = ("GUIA DE SAÍDA", *(f"GUIA DE SAÍDA - {m}" for m in MOTIVOS),
+              "GUIA DE ENTRADA", *(f"GUIA DE ENTRADA - {m}" for m in MOTIVOS))
 TipoGuia = Literal[TIPOS_GUIA]
 
 

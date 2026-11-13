@@ -2,7 +2,7 @@
 
 {# Badge do tipo da guia #}
 {% macro tipo(g) -%}
-{% if 'ENTRADA' in g.tipo %}<span class="badge b-blue">Entrada</span>
+{% if 'ENTRADA' in g.tipo %}<span class="badge b-blue">Entrada{{ " · " ~ g.tipo.split(" - ", 1)[1]|capitalize if " - " in g.tipo }}</span>
 {% elif ' - ' in g.tipo %}{% set motivo = g.tipo.split(' - ', 1)[1] %}<span class="badge {{ 'b-red' if motivo == 'DESFAZIMENTO' else 'b-gray' }}">Saída · {{ motivo|capitalize }}</span>
 {% else %}<span class="badge b-gray">Saída</span>{% endif %}
 {%- endmacro %}

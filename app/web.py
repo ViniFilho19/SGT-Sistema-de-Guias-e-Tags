@@ -171,7 +171,7 @@ async def guia_criar(request: Request, db: Session = Depends(get_db), user: User
     linhas = [dict(zip(COLS_ITEM, (str(x).strip() for x in vals)))
               for vals in zip(*(f.getlist(c) for c in COLS_ITEM))]
     itens = [l for l in linhas if any(l[c] for c in COLS_ITEM[1:])]
-    if v["tipo"] == "GUIA DE ENTRADA":
+    if v["tipo"].startswith("GUIA DE ENTRADA"):
         v["destinatario"] = v["destinatario"] or SD
     elif v["tipo"].startswith("GUIA DE SAÍDA"):
         v["remetente"] = v["remetente"] or SD
@@ -192,7 +192,7 @@ FILTROS = {  # aba -> (rótulo, condição)
     "todas": ("Todas", None),
     "prontas": ("Prontas p/ entrega", E_SAIDA & PRONTA),
     "entregues": ("Entregues", E_SAIDA & (Guia.status == "entregue")),
-    "entrada": ("Entrada", Guia.tipo == ENTRADA),
+    "entrada": ("Entrada", Guia.tipo.like(ENTRADA + "%")),
 }
 AVISOS_GUIA = {"entregue": "Entrega registrada.", "reaberta": "Guia voltou para “pronta”."}
 ERROS_GUIA = {"entrega": "Informe quem entregou e quem retirou (até 200 caracteres cada)."}
