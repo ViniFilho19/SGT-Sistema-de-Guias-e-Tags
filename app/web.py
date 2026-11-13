@@ -15,7 +15,7 @@ from .database import get_db
 from .models import Equipamento, Etiqueta, Guia, User
 from .routers.etiquetas import gerar_etiqueta, qr_data_uri, texto_qr
 from .routers.guias import criar as criar_guia
-from .schemas import EtiquetaCreate, GuiaCreate, UserCreate
+from .schemas import TIPOS_GUIA, EtiquetaCreate, GuiaCreate, UserCreate
 from .security import (bloqueado, confere_senha, criar_token, hash_senha, limpar_falhas, registrar_falha,
                        usuario_por_token)
 
@@ -185,15 +185,13 @@ async def guia_criar(request: Request, db: Session = Depends(get_db), user: User
     return RedirectResponse(f"/guias/{guia.id}", 303)
 
 
-SAIDA, ENTRADA, DESFAZIMENTO = "GUIA DE SAÍDA", "GUIA DE ENTRADA", "GUIA DE SAÍDA - DESFAZIMENTO"
-TIPOS_GUIA = [SAIDA, DESFAZIMENTO, ENTRADA]
+SAIDA, ENTRADA = "GUIA DE SAÍDA", "GUIA DE ENTRADA"
 E_SAIDA = Guia.tipo.like(SAIDA + "%")  # saída comum ou desfazimento
 PRONTA = or_(Guia.status.is_(None), Guia.status == "pronta")
 FILTROS = {  # aba -> (rótulo, condição)
     "todas": ("Todas", None),
     "prontas": ("Prontas p/ entrega", E_SAIDA & PRONTA),
     "entregues": ("Entregues", E_SAIDA & (Guia.status == "entregue")),
-    "desfazimento": ("Desfazimento", Guia.tipo == DESFAZIMENTO),
     "entrada": ("Entrada", Guia.tipo == ENTRADA),
 }
 AVISOS_GUIA = {"entregue": "Entrega registrada.", "reaberta": "Guia voltou para “pronta”."}

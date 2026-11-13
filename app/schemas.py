@@ -116,8 +116,13 @@ class GuiaItemOut(GuiaItemIn):
     equipamento_id: Optional[int] = None
 
 
+MOTIVOS_SAIDA = ("MANUTENÇÃO", "SUBSTITUIÇÃO", "DESFAZIMENTO", "ADIÇÃO")
+TIPOS_GUIA = ("GUIA DE SAÍDA", *(f"GUIA DE SAÍDA - {m}" for m in MOTIVOS_SAIDA), "GUIA DE ENTRADA")
+TipoGuia = Literal[TIPOS_GUIA]
+
+
 class GuiaCreate(Base):
-    tipo: Literal["GUIA DE ENTRADA", "GUIA DE SAÍDA", "GUIA DE SAÍDA - DESFAZIMENTO"]
+    tipo: TipoGuia
     chamado: str = Field(min_length=1, max_length=100)
     remetente: str = Field(max_length=200)
     destinatario: str = Field(max_length=200)

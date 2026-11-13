@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..database import get_db
 from ..models import Equipamento, Guia, GuiaItem, User
-from ..schemas import GuiaCreate, GuiaOut
+from ..schemas import GuiaCreate, GuiaOut, TipoGuia
 from ..security import usuario_atual
 
 router = APIRouter(prefix="/guias", tags=["guias"])
@@ -29,7 +29,7 @@ def criar(dados: GuiaCreate, db: Session = Depends(get_db), user: User = Depends
 
 
 @router.get("", response_model=list[GuiaOut])
-def listar(tipo: Optional[Literal["GUIA DE ENTRADA", "GUIA DE SAÍDA", "GUIA DE SAÍDA - DESFAZIMENTO"]] = None,
+def listar(tipo: Optional[TipoGuia] = None,
            chamado: Optional[str] = Query(None, max_length=100),
            skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200),
            db: Session = Depends(get_db), _: User = Depends(usuario_atual)):
