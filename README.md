@@ -5,9 +5,9 @@
     pip install -r requirements.txt
     cp .env.example .env        # edite SECRET_KEY
     python criar_admin.py       # cria o primeiro administrador
-    uvicorn app.main:app --reload   # ou: .venvScriptspython.exe -m uvicorn app.main:app --reload
+    uvicorn app.main:app --reload --port 5005   # ou: .venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 5005
 
-Sistema: http://localhost:8000  ·  API (Swagger): http://localhost:8000/docs
+Sistema: http://localhost:5005  ·  API (Swagger): http://localhost:5005/docs
 
 ## Interface web
 Telas em `app/templates` (Jinja2) estilizadas com **Tailwind CSS v4**. O CSS de origem fica em `app/assets/tailwind.css`
