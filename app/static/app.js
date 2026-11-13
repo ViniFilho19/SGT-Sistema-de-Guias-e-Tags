@@ -39,3 +39,9 @@ document.addEventListener("click", function (e) {
     avisar();
   }
 });
+// Botão de tema claro/escuro
+document.addEventListener("click", function (e) {
+  if (!e.target.closest("[data-tema]")) return;
+  var escuro = document.documentElement.classList.toggle("dark");
+  try { localStorage.setItem("tema", escuro ? "escuro" : "claro"); } catch (err) {}
+});

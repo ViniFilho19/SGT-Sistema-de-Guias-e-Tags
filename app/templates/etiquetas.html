@@ -37,7 +37,7 @@
         <div class="tx"><b>{{ e.eq.hostname }}</b><br>{{ e.eq.ip }}<br>{{ e.eq.localidade }}</div>
         <img class="qr" src="{{ e.qr }}" alt="QR {{ e.eq.hostname }}">
         <form class="absolute -top-2.5 -right-2.5 print:hidden" method="post" action="/etiquetas/{{ e.id }}/ocultar">
-          <button class="grid size-6 cursor-pointer place-items-center rounded-full border border-slate-300 bg-white text-slate-500 shadow-sm transition hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+          <button class="grid size-6 cursor-pointer place-items-center rounded-full border border-slate-300 bg-card text-slate-500 shadow-sm transition hover:border-red-300 hover:bg-red-50 hover:text-red-600"
                   title="Remover da lista" aria-label="Remover etiqueta {{ e.eq.hostname }} da lista">{{ icone("fechar", "size-3.5") }}</button></form>
       </div>
     {% else %}

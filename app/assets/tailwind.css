@@ -4,6 +4,9 @@
 @source "../templates";
 @source "../static/*.js";
 
+/* Modo escuro por classe: <html class="dark"> (definida por static/tema.js) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   --color-brand-50: #eff5ff;
@@ -16,13 +19,56 @@
   --color-brand-800: #123b84;
   --color-brand-900: #14306a;
   --color-ouro: #e8b923;
+  --color-card: #ffffff; /* superfície de cartões, campos e cabeçalho */
+}
+
+/* Modo escuro: em vez de "dark:" em cada classe, a paleta é trocada aqui (só na tela; a impressão sai clara).
+   Escalas claras viram escuras e vice-versa, então bg-slate-50, text-slate-900 etc. se adaptam sozinhos. */
+@media screen {
+  .dark {
+    color-scheme: dark;
+    --color-card: #121b2d;
+    --color-slate-50: #0b1220;
+    --color-slate-100: #1c2638;
+    --color-slate-200: #2a3548;
+    --color-slate-300: #3d4a60;
+    --color-slate-400: #6b7a90;
+    --color-slate-500: #94a3b8;
+    --color-slate-600: #b4c0d0;
+    --color-slate-700: #d3dbe6;
+    --color-slate-800: #e7ecf3;
+    --color-slate-900: #f4f7fb;
+    --color-brand-50: #13254a;
+    --color-brand-100: #1a3263;
+    --color-brand-200: #24437f;
+    --color-brand-300: #3a5fa8;
+    --color-brand-500: #4d8fe8;
+    --color-brand-600: #7fb0f5;
+    --color-brand-700: #2f6fd8;
+    --color-brand-800: #255cbc;
+    --color-emerald-50: #0b2a1f;
+    --color-emerald-200: #14533b;
+    --color-emerald-700: #6ee7b7;
+    --color-emerald-800: #a7f3d0;
+    --color-amber-50: #2e2108;
+    --color-amber-100: #4a360c;
+    --color-amber-700: #fbbf24;
+    --color-amber-800: #fcd34d;
+    --color-red-50: #33100f;
+    --color-red-200: #6b1f1c;
+    --color-red-300: #8f2a26;
+    --color-red-700: #fca5a5;
+    --color-red-800: #fecaca;
+  }
+  /* textos sobre botões azuis continuam brancos e legíveis */
+  .dark .btn:not(.btn-ghost, .bg-white) { color: #fff; }
 }
 
 @layer base {
   body { @apply bg-slate-50 text-slate-700 antialiased; }
   label { @apply flex flex-col gap-1.5 text-sm font-medium text-slate-700; }
   input, select {
-    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs
+    @apply w-full rounded-lg border border-slate-300 bg-card px-3 py-2 text-sm text-slate-900 shadow-xs
            transition placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15;
   }
 }
@@ -33,12 +79,12 @@
            whitespace-nowrap text-white shadow-sm transition hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2
            focus-visible:outline-brand-500 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50;
   }
-  .btn-ghost { @apply bg-white text-slate-700 shadow-xs ring-1 ring-slate-300 ring-inset hover:bg-slate-50; }
+  .btn-ghost { @apply bg-card text-slate-700 shadow-xs ring-1 ring-slate-300 ring-inset hover:bg-slate-50; }
   .btn-danger { @apply bg-red-600 hover:bg-red-700; }
   .btn-sm { @apply px-3 py-1.5 text-xs; }
   .btn-icon { @apply size-8 p-0; }
 
-  .card { @apply rounded-2xl border border-slate-200 bg-white p-6 shadow-sm; }
+  .card { @apply rounded-2xl border border-slate-200 bg-card p-6 shadow-sm; }
   .page-title { @apply text-2xl font-bold tracking-tight text-slate-900; }
   .page-sub { @apply mt-1 text-sm text-slate-500; }
   .section-title { @apply text-base font-semibold text-slate-900; }
@@ -50,7 +96,7 @@
   .nav-ativo { @apply border-brand-600 text-brand-700 hover:border-brand-600 hover:text-brand-700; }
 
   .tile {
-    @apply relative flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition
+    @apply relative flex flex-col gap-3 rounded-2xl border border-slate-200 bg-card p-5 shadow-sm transition
            hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md;
   }
   .tile-icone {

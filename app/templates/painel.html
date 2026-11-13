@@ -20,9 +20,9 @@
 {% block content %}
 <section class="relative overflow-hidden rounded-3xl bg-linear-to-br from-brand-900 via-brand-700 to-brand-500 px-6 py-8 text-white shadow-lg sm:px-10 sm:py-10">
   <img src="/static/logo.svg" alt="" class="pointer-events-none absolute -right-6 -bottom-10 size-56 opacity-10">
-  <p class="text-sm text-brand-100">Bem-vindo, <strong class="text-white">{{ user.nome }}</strong> · Perfil {{ user.papel|capitalize }}</p>
+  <p class="text-sm text-white/80">Bem-vindo, <strong class="text-white">{{ user.nome }}</strong> · Perfil {{ user.papel|capitalize }}</p>
   <h1 class="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Painel de serviços SGT</h1>
-  <p class="mt-2 max-w-2xl text-brand-100">Gere etiquetas com QR code, emita guias de entrada e saída e consulte o cadastro de equipamentos.</p>
+  <p class="mt-2 max-w-2xl text-white/80">Gere etiquetas com QR code, emita guias de entrada e saída e consulte o cadastro de equipamentos.</p>
   <div class="mt-6 flex flex-wrap gap-3">
     <a href="/etiquetas" class="btn bg-white text-brand-800 hover:bg-brand-50">{{ icone("etiqueta", "size-4") }}Nova etiqueta</a>
     <a href="/guias/nova" class="btn bg-white/15 ring-1 ring-white/30 hover:bg-white/25">{{ icone("guia", "size-4") }}Nova guia</a>
