@@ -39,6 +39,19 @@ def static_url(nome: str) -> str:
 
 
 templates.env.globals["static_url"] = static_url
+ARQ_LOCALIDADES = Path(__file__).parent / "localidades.txt"
+
+
+def localidades() -> list[str]:
+    """Sugestões de localidade (app/localidades.txt), relidas a cada uso para refletir edições."""
+    try:
+        linhas = ARQ_LOCALIDADES.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    return list(dict.fromkeys(" ".join(l.split()) for l in linhas if l.strip() and not l.lstrip().startswith("#")))
+
+
+templates.env.globals["localidades"] = localidades
 router = APIRouter(include_in_schema=False)
 
 

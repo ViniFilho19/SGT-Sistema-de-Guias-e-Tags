@@ -14,6 +14,11 @@
 {% else %}<span class="badge b-orange gap-1.5"><span class="size-1.5 rounded-full bg-amber-500"></span>Pronta</span>{% endif %}
 {%- endmacro %}
 
+{# Lista de sugestões para campos de localidade: <input list="lista-localidades"> #}
+{% macro datalist_localidades() -%}
+<datalist id="lista-localidades">{% for l in localidades() %}<option value="{{ l }}"></option>{% endfor %}</datalist>
+{%- endmacro %}
+
 {# Campos do formulário de entrega #}
 {% macro campos_entrega(user, origem, f="") -%}
 <input type="hidden" name="origem" value="{{ origem }}"><input type="hidden" name="f" value="{{ f }}">

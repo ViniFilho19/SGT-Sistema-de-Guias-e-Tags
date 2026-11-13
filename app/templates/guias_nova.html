@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}{% from "_guias.html" import datalist_localidades with context %}
 {% block title %}Nova guia{% endblock %}
 {% block content %}
 <div class="mb-6">{{ cabecalho("Nova guia", "Emita uma guia de entrada ou saída com os equipamentos movimentados.") }}</div>
@@ -12,8 +12,8 @@
         {% for t in tipos_guia %}<option {{ "selected" if v.tipo==t }}>{{ t }}</option>{% endfor %}</select></label>
       <label>Número de chamado <span class="sr-only">(obrigatório)</span><input name="chamado" value="{{ v.chamado }}" required maxlength="100"></label>
       <label>Responsável CTI<input name="responsavel" value="{{ v.responsavel }}" placeholder="Em branco = preencher à mão"></label>
-      <label>Setor remetente<input name="remetente" value="{{ v.remetente }}" placeholder="Saída: CTI - SERVICE DESK (automático)"></label>
-      <label>Destinatário<input name="destinatario" value="{{ v.destinatario }}" placeholder="Entrada: CTI - SERVICE DESK (automático)"></label>
+      <label>Setor remetente<input name="remetente" value="{{ v.remetente }}" list="lista-localidades" autocomplete="off" placeholder="Saída: CTI - SERVICE DESK (automático)"></label>
+      <label>Destinatário<input name="destinatario" value="{{ v.destinatario }}" list="lista-localidades" autocomplete="off" placeholder="Entrada: CTI - SERVICE DESK (automático)"></label>
       <label>Motivo<select name="motivo">
         <option value="">Nenhum</option>
         {% for m in motivos %}<option value="{{ m }}" {{ "selected" if v.motivo == m }}>{{ m|capitalize }}</option>{% endfor %}</select></label>
@@ -43,5 +43,6 @@
     <button class="btn px-6 py-2.5">{{ icone("guia", "size-4") }}Salvar e abrir guia</button>
   </div>
 </form>
+{{ datalist_localidades() }}
 <script src="{{ static_url('guia_form.js') }}"></script>
 {% endblock %}

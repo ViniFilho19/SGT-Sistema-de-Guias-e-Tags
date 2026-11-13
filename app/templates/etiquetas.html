@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}{% from "_guias.html" import datalist_localidades with context %}
 {% block title %}Etiquetas{% endblock %}
 {% block content %}
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4 print:hidden">
@@ -14,7 +14,7 @@
       <label>Endereço IP<input name="ip" value="{{ v.ip }}" required inputmode="decimal" placeholder="10.0.0.1"></label>
       <label>Patrimônio<input name="patrimonio" value="{{ v.patrimonio }}" required></label>
       <label>Nº de série<input name="serial" value="{{ v.serial }}" required></label>
-      <label class="sm:col-span-2">Localidade<input name="localidade" value="{{ v.localidade }}" required></label>
+      <label class="sm:col-span-2">Localidade<input name="localidade" value="{{ v.localidade }}" required list="lista-localidades" autocomplete="off" placeholder="Comece a digitar para ver as sugestões"></label>
       <label>Máscara de sub-rede <span class="text-xs font-normal text-slate-400">opcional</span><input name="mascara" value="{{ v.mascara }}" inputmode="decimal"></label>
       <label>Gateway padrão <span class="text-xs font-normal text-slate-400">opcional</span><input name="gateway" value="{{ v.gateway }}" inputmode="decimal"></label>
     </div>
@@ -50,4 +50,5 @@
     </div>
   </section>
 </div>
+{{ datalist_localidades() }}
 {% endblock %}
