@@ -105,7 +105,7 @@ def painel(request: Request, user: User = Depends(usuario_web)):
 def _etiquetas(request, db, user, status=200, erro=None, v=None):
     recentes = db.scalars(select(Etiqueta).options(selectinload(Etiqueta.equipamento))
                           .where(Etiqueta.operador_id == user.id, Etiqueta.oculta.is_(False)).order_by(Etiqueta.id.desc()).limit(12)).all()
-    itens = [{"id": e.id, "eq": e.equipamento, "qr": qr_data_uri(texto_qr(e.equipamento))} for e in recentes]
+    itens = [{"id": e.id, "eq": e.foto, "qr": qr_data_uri(texto_qr(e.foto))} for e in recentes]
     campos = ("hostname", "ip", "patrimonio", "serial", "localidade", "mascara", "gateway")
     return pagina(request, "etiquetas.html", user, status, etiquetas=itens, erro=erro,
                   v=v or {c: "" for c in campos})

@@ -5,6 +5,8 @@ from sqlalchemy import inspect, text
 COLUNAS = {
     "etiquetas": [
         ("operador_original", "VARCHAR(100)"),
+        ("hostname", "VARCHAR(100)"), ("ip", "VARCHAR(45)"), ("patrimonio", "VARCHAR(100)"), ("serial", "VARCHAR(100)"),
+        ("localidade", "VARCHAR(200)"), ("mascara", "VARCHAR(45)"), ("gateway", "VARCHAR(45)"),
     ],
     "guias": [
         ("status", "VARCHAR(20)"),
@@ -26,3 +28,7 @@ def migrar(engine) -> None:
         # guias de saída antigas passam a constar como "pronta"
         con.execute(text("UPDATE guias SET status = 'pronta' WHERE tipo = 'GUIA DE SAÍDA' AND status IS NULL"))
         con.execute(text("CREATE INDEX IF NOT EXISTS ix_guias_status ON guias (status)"))
+        # etiquetas antigas sem "foto": copia os dados atuais do equipamento (melhor informação disponível)
+        cols = ("hostname", "ip", "patrimonio", "serial", "localidade", "mascara", "gateway")
+        sets = ", ".join(f"{c} = (SELECT e.{c} FROM equipamentos e WHERE e.id = etiquetas.equipamento_id)" for c in cols)
+        con.execute(text(f"UPDATE etiquetas SET {sets} WHERE " + " AND ".join(f"{c} IS NULL" for c in cols)))

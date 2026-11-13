@@ -86,6 +86,14 @@ class EtiquetaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     criado_em: datetime
+    # dados impressos na etiqueta (foto no momento da geração)
+    hostname: Optional[str] = None
+    ip: Optional[str] = None
+    patrimonio: Optional[str] = None
+    serial: Optional[str] = None
+    localidade: Optional[str] = None
+    mascara: Optional[str] = None
+    gateway: Optional[str] = None
     equipamento: EquipamentoOut
     operador: UserOut
 

@@ -40,6 +40,8 @@ LOCALIDADES = {
     "CIRETRAN BUMADO": "CIRETRAN BRUMADO",
     "IRETRAN ILHEUS": "CIRETRAN ILHEUS",
     "CIRETRAN DE TEIXEIRA DE FREITAS": "CIRETRAN TEIXEIRA DE FREITAS",
+    "RETRAN DE DIAS D'ÁVILA": "CIRETRAN DIAS D'ÁVILA",
+    "CIRETRAN JEQUIE": "CIRETRAN JEQUIÉ",
 }
 CAMPOS = ("hostname", "ip", "patrimonio", "serial", "localidade", "mascara", "gateway")
 
@@ -142,19 +144,22 @@ def main() -> None:
             db.flush()
 
             quando = d["data"].astimezone(timezone.utc)
-            existe = db.scalar(select(Etiqueta.id).where(Etiqueta.equipamento_id == eq.id,
-                                                         Etiqueta.operador_id == imp.id, Etiqueta.criado_em == quando))
+            foto = {c: d[c] for c in CAMPOS}
+            existe = db.scalar(select(Etiqueta).where(Etiqueta.equipamento_id == eq.id,
+                                                      Etiqueta.operador_id == imp.id, Etiqueta.criado_em == quando))
             if existe:
+                for c, v in foto.items():  # atualiza a foto (ex.: correções de localidade)
+                    setattr(existe, c, v)
                 puladas += 1
                 continue
             db.add(Etiqueta(equipamento_id=eq.id, operador_id=imp.id, criado_em=quando, oculta=True,
-                            operador_original=d["operador"] or "Não informado"))
+                            operador_original=d["operador"] or "Não informado", **foto))
             criadas += 1
 
         repetidas = Counter((d["hostname"], d["patrimonio"]) for d in linhas)
         print(f"\nLinhas lidas: {len(linhas)}")
         print(f"Equipamentos novos: {len(novos)}   atualizados (já existiam): {len(atualizados)}")
-        print(f"Etiquetas a registrar: {criadas}   já importadas antes (ignoradas): {puladas}")
+        print(f"Etiquetas a registrar: {criadas}   já importadas antes (só dados atualizados): {puladas}")
         rep = [f"{h} ({n}x)" for (h, _), n in repetidas.items() if n > 1]
         if rep:
             print("Etiquetas repetidas (reimpressões, todas mantidas no histórico): " + ", ".join(rep))

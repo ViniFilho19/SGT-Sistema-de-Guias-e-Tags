@@ -31,7 +31,7 @@ def gerar_etiqueta(db: Session, dados: EtiquetaCreate, user: User) -> Etiqueta:
         eq = Equipamento(tipo="Computador", **dados.model_dump())
         db.add(eq)
     db.flush()
-    etiqueta = Etiqueta(equipamento_id=eq.id, operador_id=user.id)
+    etiqueta = Etiqueta(equipamento_id=eq.id, operador_id=user.id, **dados.model_dump())
     db.add(etiqueta)
     db.commit()
     db.refresh(etiqueta)

@@ -1,10 +1,14 @@
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Optional
 
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
+
+
+CAMPOS_ETIQUETA = ("hostname", "ip", "patrimonio", "serial", "localidade", "mascara", "gateway")
 
 
 def agora() -> datetime:
@@ -46,8 +50,23 @@ class Etiqueta(Base):
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
     oculta: Mapped[bool] = mapped_column(default=False, server_default="0")  # True = removida da lista de recentes
     operador_original: Mapped[Optional[str]] = mapped_column(String(100))  # nome do operador em registros importados
+    # "foto" dos dados impressos na etiqueta, no momento em que foi gerada
+    hostname: Mapped[Optional[str]] = mapped_column(String(100))
+    ip: Mapped[Optional[str]] = mapped_column(String(45))
+    patrimonio: Mapped[Optional[str]] = mapped_column(String(100))
+    serial: Mapped[Optional[str]] = mapped_column(String(100))
+    localidade: Mapped[Optional[str]] = mapped_column(String(200))
+    mascara: Mapped[Optional[str]] = mapped_column(String(45))
+    gateway: Mapped[Optional[str]] = mapped_column(String(45))
     equipamento: Mapped[Equipamento] = relationship()
     operador: Mapped[User] = relationship()
+
+    @property
+    def foto(self) -> SimpleNamespace:
+        """Dados como estavam na etiqueta (registros antigos sem foto caem no cadastro atual)."""
+        tem_foto = any(getattr(self, c) for c in CAMPOS_ETIQUETA)
+        origem = self if tem_foto else self.equipamento
+        return SimpleNamespace(**{c: getattr(origem, c) for c in CAMPOS_ETIQUETA})
 
 
 class Guia(Base):

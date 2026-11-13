@@ -60,10 +60,10 @@
 <p class="mb-3 text-sm text-slate-500">Inclui etiquetas já removidas da lista de recentes.</p>
 <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
   <tr><th>Data</th><th>Hostname</th><th>IP</th><th>Patrimônio</th><th>Nº série</th><th>Localidade</th><th>Operador</th></tr>
-  {% for e in etiquetas %}<tr><td class="whitespace-nowrap">{{ e.data }}</td><td class="font-medium text-slate-900">{{ e.equipamento.hostname or "" }}</td>
-    <td class="font-mono text-xs">{{ e.equipamento.ip or "" }}</td>
-    <td>{{ e.equipamento.patrimonio or "" }}</td><td>{{ e.equipamento.serial or "" }}</td>
-    <td>{{ e.equipamento.localidade or "" }}</td><td>{% if e.operador_original %}{{ e.operador_original }} <span class="badge b-gray ml-1">planilha</span>{% else %}{{ e.operador.nome }}{% endif %}</td></tr>{% endfor %}
+  {% for e in etiquetas %}<tr><td class="whitespace-nowrap">{{ e.data }}</td><td class="font-medium text-slate-900">{{ e.foto.hostname or "" }}</td>
+    <td class="font-mono text-xs">{{ e.foto.ip or "" }}</td>
+    <td>{{ e.foto.patrimonio or "" }}</td><td>{{ e.foto.serial or "" }}</td>
+    <td>{{ e.foto.localidade or "" }}</td><td>{% if e.operador_original %}{{ e.operador_original }} <span class="badge b-gray ml-1">planilha</span>{% else %}{{ e.operador.nome }}{% endif %}</td></tr>{% endfor %}
 </table></div></div>
 {% endif %}
 {% endblock %}
