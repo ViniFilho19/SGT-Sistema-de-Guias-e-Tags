@@ -198,7 +198,7 @@ ERROS_GUIA = {"entrega": "Informe quem entregou e quem retirou (até 200 caracte
 def guias(request: Request, f: str = "todas", ok: str = "", erro: str = "",
           db: Session = Depends(get_db), user: User = Depends(usuario_web)):
     f = f if f in FILTROS else "todas"
-    stmt = select(Guia).options(selectinload(Guia.itens)).order_by(Guia.id.desc()).limit(100)
+    stmt = select(Guia).options(selectinload(Guia.itens)).order_by(Guia.criado_em.desc(), Guia.id.desc()).limit(500)
     if FILTROS[f][1] is not None:
         stmt = stmt.where(FILTROS[f][1])
     lista = db.scalars(stmt).all()

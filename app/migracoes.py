@@ -14,6 +14,8 @@ COLUNAS = {
         ("retirado_por", "VARCHAR(200)"),
         ("entregue_em", "TIMESTAMP"),
         ("entrega_operador_id", "INTEGER REFERENCES users(id)"),
+        ("codigo_original", "VARCHAR(30)"),
+        ("operador_original", "VARCHAR(100)"),
     ],
 }
 

@@ -25,8 +25,8 @@
     <td><span class="badge b-gray">{{ g.itens|length }}</span></td>
     <td>{{ gu.situacao(g) }}
       {% if g.status == "entregue" %}<p class="mt-1 text-xs leading-snug text-slate-500">
-        Retirado por <b class="font-medium text-slate-700">{{ g.retirado_por }}</b><br>
-        Entregue por {{ g.entregue_por }} · {{ g.entregue_txt }}</p>{% endif %}</td>
+        {% if g.retirado_por %}Retirado por <b class="font-medium text-slate-700">{{ g.retirado_por }}</b><br>
+        Entregue por {{ g.entregue_por }} · {{ g.entregue_txt }}{% else %}Registro importado da planilha{% endif %}</p>{% endif %}</td>
     <td><div class="flex justify-end gap-2">
       {% if 'SAÍDA' in g.tipo and g.status != "entregue" %}
         <button type="button" class="btn btn-sm" data-entrega="/guias/{{ g.id }}/entregar" data-guia="{{ g.id }}">{{ icone("ok", "size-3.5") }}Registrar entrega</button>

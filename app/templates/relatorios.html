@@ -50,7 +50,7 @@
   {% for g in guias %}<tr><td class="font-semibold text-slate-900">{{ g.id }}</td><td class="whitespace-nowrap">{{ g.data }}</td>
     <td>{{ gu.tipo(g) }} {{ gu.situacao(g) if 'SAÍDA' in g.tipo }}</td>
     <td>{{ g.chamado or "—" }}</td><td>{{ g.remetente }} <span class="text-slate-400">→</span> {{ g.destinatario }}</td><td>{{ g.itens|length }}</td>
-    <td>{{ g.operador.nome }}</td>
+    <td>{% if g.operador_original %}{{ g.operador_original }} <span class="badge b-gray ml-1">planilha</span>{% else %}{{ g.operador.nome }}{% endif %}</td>
     <td class="text-right print:hidden"><a class="btn btn-ghost btn-sm" href="/guias/{{ g.id }}">Abrir</a></td></tr>{% endfor %}
 </table></div></div>
 {% endif %}

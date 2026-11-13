@@ -85,6 +85,8 @@ class Guia(Base):
     retirado_por: Mapped[Optional[str]] = mapped_column(String(200))   # quem pegou/retirou o equipamento
     entregue_em: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     entrega_operador_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))  # quem registrou no sistema
+    codigo_original: Mapped[Optional[str]] = mapped_column(String(30), index=True)  # ID da guia no sistema antigo
+    operador_original: Mapped[Optional[str]] = mapped_column(String(100))  # operador em registros importados
     operador: Mapped[User] = relationship(foreign_keys=[operador_id])
     entrega_operador: Mapped[Optional[User]] = relationship(foreign_keys=[entrega_operador_id])
     itens: Mapped[list["GuiaItem"]] = relationship(back_populates="guia", cascade="all, delete-orphan")

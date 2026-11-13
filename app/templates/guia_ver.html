@@ -21,8 +21,9 @@
         {% if g.status == "entregue" %}<span class="text-sm text-slate-500">em {{ entregue_txt }}</span>{% endif %}</div>
       {% if g.status == "entregue" %}
       <dl class="mt-3 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
-        <div><dt class="text-slate-500">Retirado por</dt><dd class="font-medium text-slate-900">{{ g.retirado_por }}</dd></div>
-        <div><dt class="text-slate-500">Entregue por</dt><dd class="font-medium text-slate-900">{{ g.entregue_por }}</dd></div>
+        <div><dt class="text-slate-500">Retirado por</dt><dd class="font-medium text-slate-900">{{ g.retirado_por or "—" }}</dd></div>
+        <div><dt class="text-slate-500">Entregue por</dt><dd class="font-medium text-slate-900">{{ g.entregue_por or "—" }}</dd></div>
+        {% if g.codigo_original %}<div class="sm:col-span-2 text-xs text-slate-400">Guia importada da planilha (ID antigo {{ g.codigo_original }}, operador {{ g.operador_original }})</div>{% endif %}
         {% if g.entrega_operador %}<div class="sm:col-span-2 text-xs text-slate-400">Registrado no sistema por {{ g.entrega_operador.nome }}</div>{% endif %}
       </dl>
       {% else %}<p class="mt-2 text-sm text-slate-500">O equipamento está pronto e aguarda retirada.</p>{% endif %}
