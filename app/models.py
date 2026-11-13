@@ -59,7 +59,14 @@ class Guia(Base):
     responsavel: Mapped[Optional[str]] = mapped_column(String(200))
     operador_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
-    operador: Mapped[User] = relationship()
+    # Controle de entrega (só guias de saída): pronta -> entregue
+    status: Mapped[Optional[str]] = mapped_column(String(20), index=True)
+    entregue_por: Mapped[Optional[str]] = mapped_column(String(200))   # quem entregou o equipamento
+    retirado_por: Mapped[Optional[str]] = mapped_column(String(200))   # quem pegou/retirou o equipamento
+    entregue_em: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    entrega_operador_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))  # quem registrou no sistema
+    operador: Mapped[User] = relationship(foreign_keys=[operador_id])
+    entrega_operador: Mapped[Optional[User]] = relationship(foreign_keys=[entrega_operador_id])
     itens: Mapped[list["GuiaItem"]] = relationship(back_populates="guia", cascade="all, delete-orphan")
 
 

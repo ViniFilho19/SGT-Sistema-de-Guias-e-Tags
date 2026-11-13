@@ -1,0 +1,20 @@
+{% from "_icones.html" import icone %}
+
+{# Badge do tipo da guia #}
+{% macro tipo(g) -%}
+<span class="badge {{ 'b-blue' if 'ENTRADA' in g.tipo else 'b-gray' }}">{{ "Entrada" if 'ENTRADA' in g.tipo else "Saída" }}</span>
+{%- endmacro %}
+
+{# Situação de entrega (só guias de saída) #}
+{% macro situacao(g) -%}
+{% if 'ENTRADA' in g.tipo %}<span class="text-slate-400">—</span>
+{% elif g.status == "entregue" %}<span class="badge b-green gap-1">{{ icone("ok", "size-3.5") }}Entregue</span>
+{% else %}<span class="badge b-orange gap-1.5"><span class="size-1.5 rounded-full bg-amber-500"></span>Pronta</span>{% endif %}
+{%- endmacro %}
+
+{# Campos do formulário de entrega #}
+{% macro campos_entrega(user, origem, f="") -%}
+<input type="hidden" name="origem" value="{{ origem }}"><input type="hidden" name="f" value="{{ f }}">
+<label>Quem retirou o equipamento<input name="retirado_por" required maxlength="200" placeholder="Nome de quem pegou a máquina" autocomplete="off"></label>
+<label>Quem entregou<input name="entregue_por" required maxlength="200" value="{{ user.nome }}" autocomplete="off"></label>
+{%- endmacro %}

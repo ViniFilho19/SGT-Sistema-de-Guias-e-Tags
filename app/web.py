@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, or_, select, true, update
 from sqlalchemy.orm import Session, selectinload
 
 from .config import settings
@@ -182,23 +182,89 @@ async def guia_criar(request: Request, db: Session = Depends(get_db), user: User
     return RedirectResponse(f"/guias/{guia.id}", 303)
 
 
+SAIDA, ENTRADA = "GUIA DE SAÍDA", "GUIA DE ENTRADA"
+PRONTA = or_(Guia.status.is_(None), Guia.status == "pronta")
+FILTROS = {  # aba -> (rótulo, condição)
+    "todas": ("Todas", None),
+    "prontas": ("Prontas p/ entrega", (Guia.tipo == SAIDA) & PRONTA),
+    "entregues": ("Entregues", (Guia.tipo == SAIDA) & (Guia.status == "entregue")),
+    "entrada": ("Entrada", Guia.tipo == ENTRADA),
+}
+AVISOS_GUIA = {"entregue": "Entrega registrada.", "reaberta": "Guia voltou para “pronta”."}
+ERROS_GUIA = {"entrega": "Informe quem entregou e quem retirou (até 200 caracteres cada)."}
+
+
 @router.get("/guias")
-def guias(request: Request, db: Session = Depends(get_db), user: User = Depends(usuario_web)):
-    lista = db.scalars(select(Guia).options(selectinload(Guia.itens)).order_by(Guia.id.desc()).limit(100)).all()
+def guias(request: Request, f: str = "todas", ok: str = "", erro: str = "",
+          db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    f = f if f in FILTROS else "todas"
+    stmt = select(Guia).options(selectinload(Guia.itens)).order_by(Guia.id.desc()).limit(100)
+    if FILTROS[f][1] is not None:
+        stmt = stmt.where(FILTROS[f][1])
+    lista = db.scalars(stmt).all()
     for g in lista:
         g.data = hora_local(g.criado_em)
-    return pagina(request, "guias_lista.html", user, guias=lista)
+        g.entregue_txt = hora_local(g.entregue_em) if g.entregue_em else ""
+    contagem = {k: db.scalar(select(func.count(Guia.id)).where(c if c is not None else true())) for k, (_, c) in FILTROS.items()}
+    abas = [(k, rotulo, contagem[k]) for k, (rotulo, _) in FILTROS.items()]
+    return pagina(request, "guias_lista.html", user, guias=lista, f=f, abas=abas,
+                  ok=AVISOS_GUIA.get(ok), erro=ERROS_GUIA.get(erro))
+
+
+def _guia_saida(db: Session, id_: int) -> Guia:
+    g = db.get(Guia, id_)
+    if not g or g.tipo != SAIDA:
+        raise HTTPException(404, "Guia de saída não encontrada")
+    return g
+
+
+def _voltar(id_: int, origem: str, f: str, **qs) -> RedirectResponse:
+    """Volta para a tela de origem (só destinos internos fixos)."""
+    if origem == "guia":
+        url = f"/guias/{id_}"
+    else:
+        url = "/guias"
+        if f in FILTROS and f != "todas":
+            qs = {"f": f, **qs}
+    if qs:
+        url += "?" + "&".join(f"{k}={v}" for k, v in qs.items())
+    return RedirectResponse(url, 303)
+
+
+@router.post("/guias/{id_}/entregar")
+def guia_entregar(id_: int, entregue_por: str = Form(""), retirado_por: str = Form(""),
+                  origem: str = Form(""), f: str = Form(""),
+                  db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    g = _guia_saida(db, id_)
+    entregue_por, retirado_por = entregue_por.strip(), retirado_por.strip()
+    if not (0 < len(entregue_por) <= 200 and 0 < len(retirado_por) <= 200):
+        return _voltar(id_, origem, f, erro="entrega")
+    g.status, g.entregue_por, g.retirado_por = "entregue", entregue_por, retirado_por
+    g.entregue_em, g.entrega_operador_id = datetime.now(timezone.utc), user.id
+    db.commit()
+    return _voltar(id_, origem, f, ok="entregue")
+
+
+@router.post("/guias/{id_}/reabrir")
+def guia_reabrir(id_: int, origem: str = Form(""), f: str = Form(""),
+                 db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    g = _guia_saida(db, id_)
+    g.status, g.entregue_por, g.retirado_por, g.entregue_em, g.entrega_operador_id = "pronta", None, None, None, None
+    db.commit()
+    return _voltar(id_, origem, f, ok="reaberta")
 
 
 @router.get("/guias/{id_}")
-def guia_ver(id_: int, request: Request, data: int = 1, db: Session = Depends(get_db),
-             user: User = Depends(usuario_web)):
+def guia_ver(id_: int, request: Request, data: int = 1, ok: str = "", erro: str = "",
+             db: Session = Depends(get_db), user: User = Depends(usuario_web)):
     g = db.get(Guia, id_)
     if not g:
         raise HTTPException(404, "Guia não encontrada")
     usar = bool(data)
     txt = f"DATA: {hora_local(g.criado_em, '%d/%m/%Y às %H:%M')}" if usar else "DATA: _______/_______/_____________"
-    return pagina(request, "guia_ver.html", user, g=g, usar_data=usar, data_txt=txt)
+    entregue_txt = hora_local(g.entregue_em, "%d/%m/%Y às %H:%M") if g.entregue_em else ""
+    return pagina(request, "guia_ver.html", user, g=g, usar_data=usar, data_txt=txt, entregue_txt=entregue_txt,
+                  ok=AVISOS_GUIA.get(ok), erro=ERROS_GUIA.get(erro))
 
 
 # ---------- usuários (somente admin) ----------

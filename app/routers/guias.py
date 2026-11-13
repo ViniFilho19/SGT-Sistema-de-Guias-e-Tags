@@ -15,6 +15,8 @@ router = APIRouter(prefix="/guias", tags=["guias"])
 @router.post("", response_model=GuiaOut, status_code=201)
 def criar(dados: GuiaCreate, db: Session = Depends(get_db), user: User = Depends(usuario_atual)):
     guia = Guia(**dados.model_dump(exclude={"itens"}), operador_id=user.id)
+    if guia.tipo == "GUIA DE SAÍDA":
+        guia.status = "pronta"
     for item in dados.itens:
         eq_id = None
         if item.patrimonio:  # liga ao cadastro quando o patrimônio já existe

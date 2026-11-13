@@ -126,5 +126,9 @@ class GuiaOut(BaseModel):
     destinatario: str
     responsavel: Optional[str]
     criado_em: datetime
+    status: Optional[str] = None
+    entregue_por: Optional[str] = None
+    retirado_por: Optional[str] = None
+    entregue_em: Optional[datetime] = None
     operador: UserOut
     itens: list[GuiaItemOut]

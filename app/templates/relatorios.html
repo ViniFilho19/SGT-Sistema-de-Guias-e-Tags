@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% from "_icones.html" import icone, cabecalho %}
+{% extends "base.html" %}{% from "_icones.html" import icone, cabecalho %}{% import "_guias.html" as gu %}
 {% block title %}Relatórios{% endblock %}
 {% macro stat(rotulo, valor, ic, cor="bg-brand-50 text-brand-700") %}
 <div class="card flex items-center gap-4 p-5">
@@ -48,7 +48,7 @@
 <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
   <tr><th>Nº</th><th>Data</th><th>Tipo</th><th>Chamado</th><th>Remetente → Destinatário</th><th>Itens</th><th>Operador</th><th class="print:hidden"></th></tr>
   {% for g in guias %}<tr><td class="font-semibold text-slate-900">{{ g.id }}</td><td class="whitespace-nowrap">{{ g.data }}</td>
-    <td><span class="badge {{ 'b-green' if 'ENTRADA' in g.tipo else 'b-orange' }}">{{ g.tipo }}</span></td>
+    <td>{{ gu.tipo(g) }} {{ gu.situacao(g) if 'SAÍDA' in g.tipo }}</td>
     <td>{{ g.chamado or "—" }}</td><td>{{ g.remetente }} <span class="text-slate-400">→</span> {{ g.destinatario }}</td><td>{{ g.itens|length }}</td>
     <td>{{ g.operador.nome }}</td>
     <td class="text-right print:hidden"><a class="btn btn-ghost btn-sm" href="/guias/{{ g.id }}">Abrir</a></td></tr>{% endfor %}

@@ -4,10 +4,12 @@ import getpass
 from sqlalchemy import select
 
 from app.database import Base, SessionLocal, engine
+from app.migracoes import migrar
 from app.models import User
 from app.security import hash_senha
 
 Base.metadata.create_all(engine)
+migrar(engine)
 username = input("Usuário: ").strip()
 nome = input("Nome completo: ").strip()
 senha = getpass.getpass("Senha (mín. 8 caracteres): ")

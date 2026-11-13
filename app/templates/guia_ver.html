@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% from "_icones.html" import icone, cabecalho %}
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}{% import "_guias.html" as gu %}
 {% block title %}Guia {{ g.id }}{% endblock %}
 {% block content %}
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4 print:hidden">
@@ -11,6 +11,35 @@
     <button class="btn" data-print>{{ icone("imprimir", "size-4") }}Imprimir guia</button>
   </div>
 </div>
+<div class="print:hidden">{{ alertas(erro, ok) }}</div>
+{% if 'SAÍDA' in g.tipo %}
+<section class="card mx-auto mb-6 max-w-[900px] p-5 print:hidden">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <p class="text-xs font-semibold tracking-wider text-slate-500 uppercase">Situação da entrega</p>
+      <div class="mt-1.5 flex items-center gap-3">{{ gu.situacao(g) }}
+        {% if g.status == "entregue" %}<span class="text-sm text-slate-500">em {{ entregue_txt }}</span>{% endif %}</div>
+      {% if g.status == "entregue" %}
+      <dl class="mt-3 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
+        <div><dt class="text-slate-500">Retirado por</dt><dd class="font-medium text-slate-900">{{ g.retirado_por }}</dd></div>
+        <div><dt class="text-slate-500">Entregue por</dt><dd class="font-medium text-slate-900">{{ g.entregue_por }}</dd></div>
+        {% if g.entrega_operador %}<div class="sm:col-span-2 text-xs text-slate-400">Registrado no sistema por {{ g.entrega_operador.nome }}</div>{% endif %}
+      </dl>
+      {% else %}<p class="mt-2 text-sm text-slate-500">O equipamento está pronto e aguarda retirada.</p>{% endif %}
+    </div>
+    {% if g.status == "entregue" %}
+    <form method="post" action="/guias/{{ g.id }}/reabrir" data-confirm="Voltar a guia nº {{ g.id }} para “pronta”? Os nomes da entrega serão apagados.">
+      <input type="hidden" name="origem" value="guia"><button class="btn btn-ghost btn-sm">Desfazer entrega</button></form>
+    {% endif %}
+  </div>
+  {% if g.status != "entregue" %}
+  <form method="post" action="/guias/{{ g.id }}/entregar" class="mt-4 grid items-end gap-4 border-t border-slate-100 pt-4 sm:grid-cols-[1fr_1fr_auto]">
+    {{ gu.campos_entrega(user, "guia") }}
+    <button class="btn">{{ icone("ok", "size-4") }}Registrar entrega</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
 <div class="folha rounded-2xl border border-slate-200 p-6 shadow-sm sm:p-8 print:rounded-none print:border-0 print:p-0 print:shadow-none">
 {% for via in ["1ª VIA - REMETENTE","2ª VIA - DESTINATÁRIO"] %}
   <section class="via"><small>{{ via }}</small>
@@ -23,7 +52,7 @@
     <div class="assin">
       <div><h4>Responsável CTI</h4><p>Nome: {% if g.responsavel %}<strong>{{ g.responsavel }}</strong>{% else %}_______________________________{% endif %}</p>
         <p>Contato: ____________________________</p><p>Assinatura: _________________________</p></div>
-      <div><h4>Portador Responsável</h4><p>Nome: _______________________________</p><p>Contato: ____________________________</p>
+      <div><h4>Portador Responsável</h4><p>Nome: {% if g.retirado_por %}<strong>{{ g.retirado_por }}</strong>{% else %}_______________________________{% endif %}</p><p>Contato: ____________________________</p>
         <p>CPF: ________________________________</p><p>Assinatura: _________________________</p></div>
     </div>
   </section>

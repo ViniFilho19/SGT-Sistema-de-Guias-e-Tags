@@ -6,6 +6,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .database import Base, engine
+from .migracoes import migrar
 from .routers import auth, equipamentos, etiquetas, guias
 from . import web
 
@@ -13,6 +14,7 @@ from . import web
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)  # em produção, prefira migrações com Alembic
+    migrar(engine)
     yield
 
 

@@ -1,20 +1,55 @@
-{% extends "base.html" %}{% from "_icones.html" import icone, cabecalho %}
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}{% import "_guias.html" as gu %}
 {% block title %}Guias{% endblock %}
 {% block content %}
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-  {{ cabecalho("Guias emitidas", "Reabra e reimprima guias de entrada e saída já registradas.") }}
+  {{ cabecalho("Guias emitidas", "Reabra, reimprima e controle a entrega das guias de saída.") }}
   <a class="btn" href="/guias/nova">{{ icone("mais", "size-4") }}Nova guia</a>
 </div>
+{{ alertas(erro, ok) }}
+
+<nav class="mb-4 flex max-w-full gap-1 overflow-x-auto rounded-xl bg-slate-200/60 p-1 sm:w-fit" aria-label="Filtrar guias">
+  {% for chave, rotulo, n in abas %}
+  <a href="/guias{{ '' if chave == 'todas' else '?f=' ~ chave }}" {% if chave == f %}aria-current="page"{% endif %}
+     class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition
+            {{ 'bg-white text-slate-900 shadow-sm' if chave == f else 'text-slate-500 hover:text-slate-800' }}">
+    {{ rotulo }}<span class="rounded-full px-1.5 text-xs {{ 'bg-amber-100 text-amber-800' if chave == 'prontas' and n else 'bg-slate-200 text-slate-600' if chave != f else 'bg-slate-100 text-slate-600' }}">{{ n }}</span></a>
+  {% endfor %}
+</nav>
+
 <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
-  <tr><th>Nº</th><th>Data</th><th>Tipo</th><th>Chamado</th><th>Remetente → Destinatário</th><th>Itens</th><th></th></tr>
+  <tr><th>Nº</th><th>Data</th><th>Tipo</th><th>Chamado</th><th>Remetente → Destinatário</th><th>Itens</th><th>Situação</th><th></th></tr>
   {% for g in guias %}<tr>
     <td class="font-semibold text-slate-900">{{ g.id }}</td><td class="whitespace-nowrap">{{ g.data }}</td>
-    <td><span class="badge {{ 'b-green' if 'ENTRADA' in g.tipo else 'b-orange' }}">{{ g.tipo }}</span></td>
+    <td>{{ gu.tipo(g) }}</td>
     <td>{{ g.chamado or "—" }}</td><td>{{ g.remetente }} <span class="text-slate-400">→</span> {{ g.destinatario }}</td>
     <td><span class="badge b-gray">{{ g.itens|length }}</span></td>
-    <td class="text-right"><a class="btn btn-ghost btn-sm" href="/guias/{{ g.id }}">Abrir{{ icone("seta", "size-3.5") }}</a></td></tr>
-  {% else %}<tr><td colspan="7" class="py-14 text-center text-slate-500">
+    <td>{{ gu.situacao(g) }}
+      {% if g.status == "entregue" %}<p class="mt-1 text-xs leading-snug text-slate-500">
+        Retirado por <b class="font-medium text-slate-700">{{ g.retirado_por }}</b><br>
+        Entregue por {{ g.entregue_por }} · {{ g.entregue_txt }}</p>{% endif %}</td>
+    <td><div class="flex justify-end gap-2">
+      {% if 'SAÍDA' in g.tipo and g.status != "entregue" %}
+        <button type="button" class="btn btn-sm" data-entrega="/guias/{{ g.id }}/entregar" data-guia="{{ g.id }}">{{ icone("ok", "size-3.5") }}Registrar entrega</button>
+      {% endif %}
+      <a class="btn btn-ghost btn-sm" href="/guias/{{ g.id }}">Abrir{{ icone("seta", "size-3.5") }}</a></div></td></tr>
+  {% else %}<tr><td colspan="8" class="py-14 text-center text-slate-500">
     <span class="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400">{{ icone("guia", "size-6") }}</span>
-    Nenhuma guia emitida ainda. <a href="/guias/nova" class="font-medium text-brand-700 hover:underline">Emitir a primeira</a></td></tr>{% endfor %}
+    {% if f == "todas" %}Nenhuma guia emitida ainda. <a href="/guias/nova" class="font-medium text-brand-700 hover:underline">Emitir a primeira</a>
+    {% else %}Nenhuma guia nesta aba. <a href="/guias" class="font-medium text-brand-700 hover:underline">Ver todas</a>{% endif %}</td></tr>{% endfor %}
 </table></div></div>
+
+{# Janela de entrega: o app.js preenche o destino e o número da guia ao clicar em "Registrar entrega" #}
+<dialog id="dlg-entrega" class="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl p-0 shadow-2xl backdrop:bg-slate-900/50" aria-labelledby="dlg-entrega-titulo">
+  <form method="post" class="space-y-4 p-6">
+    <div>
+      <h2 id="dlg-entrega-titulo" class="section-title">Registrar entrega · Guia nº <span data-guia-num></span></h2>
+      <p class="page-sub">A guia passa de “pronta” para “entregue”.</p>
+    </div>
+    {{ gu.campos_entrega(user, "lista", f) }}
+    <div class="flex justify-end gap-2 pt-2">
+      <button class="btn btn-ghost" formmethod="dialog" formnovalidate>Cancelar</button>
+      <button class="btn">{{ icone("ok", "size-4") }}Confirmar entrega</button>
+    </div>
+  </form>
+</dialog>
 {% endblock %}
