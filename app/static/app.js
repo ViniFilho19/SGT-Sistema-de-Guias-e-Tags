@@ -19,3 +19,23 @@ document.addEventListener("click", function (e) {
   dlg.showModal();
   form.querySelector("[name=retirado_por]").focus();
 });
+// Botão "Copiar texto": copia o conteúdo do campo indicado em data-copiar
+document.addEventListener("click", function (e) {
+  var botao = e.target.closest("[data-copiar]");
+  if (!botao) return;
+  var campo = document.getElementById(botao.getAttribute("data-copiar"));
+  if (!campo) return;
+  var rotulo = botao.querySelector("span") || botao;
+  var avisar = function () {
+    var antes = rotulo.textContent;
+    rotulo.textContent = "Copiado!";
+    setTimeout(function () { rotulo.textContent = antes; }, 2000);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(campo.value).then(avisar);
+  } else {  // http sem HTTPS (ex.: acesso pela rede interna): método antigo
+    campo.select();
+    document.execCommand("copy");
+    avisar();
+  }
+});

@@ -40,6 +40,36 @@
   </form>
   {% endif %}
 </section>
+{% if g.status == "entregue" %}
+{% set texto %}
+Prezados,
+
+Informamos que {{ "o equipamento" if g.itens|length == 1 else "os equipamentos" }} referente{{ "" if g.itens|length == 1 else "s" }} {{ "ao chamado " ~ g.chamado if g.chamado else "a esta solicitação" }} {{ "foi entregue" if g.itens|length == 1 else "foram entregues" }}{{ " em " ~ entregue_txt if entregue_txt }}.
+
+Destino: {{ g.destinatario }}
+{% if g.retirado_por %}Retirado por: {{ g.retirado_por }}
+{% endif %}{% if g.entregue_por %}Entregue por: {{ g.entregue_por }}
+{% endif %}
+{{ "Equipamento" if g.itens|length == 1 else "Equipamentos" }}:
+{% for i in g.itens %}- {{ [i.tipo_equipamento, i.modelo]|select|join(" ") }}{% for rot, val in [("Patrimônio", i.patrimonio), ("Série", i.serial), ("Hostname", i.hostname), ("IP", i.ip)] if val %} | {{ rot }}: {{ val }}{% endfor %}
+{% endfor %}
+Guia de saída nº {{ g.id }}.
+
+Atenciosamente,
+CTI - Service Desk
+{% endset %}
+<section class="card mx-auto mb-6 max-w-[900px] p-5 print:hidden">
+  <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="section-title">Texto para o chamado</h2>
+      <p class="page-sub">Copie e cole no chamado para registrar a entrega.</p>
+    </div>
+    <button type="button" class="btn btn-sm" data-copiar="texto-chamado">{{ icone("guia", "size-4") }}<span>Copiar texto</span></button>
+  </div>
+  <textarea id="texto-chamado" readonly rows="{{ 14 + g.itens|length }}"
+            class="w-full rounded-lg border border-slate-300 bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-800">{{ texto|trim }}</textarea>
+</section>
+{% endif %}
 {% endif %}
 <div class="folha rounded-2xl border border-slate-200 p-6 shadow-sm sm:p-8 print:rounded-none print:border-0 print:p-0 print:shadow-none">
 {% for via in ["1ª VIA - REMETENTE","2ª VIA - DESTINATÁRIO"] %}
