@@ -34,7 +34,33 @@ from app.migracoes import migrar
 from app.models import Equipamento
 
 FUSO = ZoneInfo("America/Bahia")
-CAMPOS = ("hostname", "ip", "patrimonio", "serial", "localidade", "mascara", "gateway")
+CAMPOS = ("hostname", "ip", "patrimonio", "serial", "localidade", "mascara", "gateway", "modelo")
+FABRICANTES = {  # nome curto do fabricante (minúsculas -> como mostrar)
+    "positivo informatica sa": "Positivo", "positivo tecnologia sa": "Positivo", "positivo": "Positivo",
+    "dell inc.": "Dell", "daten tecnologia ltda": "Daten", "daten tecnologia": "Daten",
+    "hewlett-packard": "HP", "hp": "HP", "lenovo": "Lenovo", "itautec s.a.": "Itautec",
+    "login informatica ltda": "Login", "login": "Login", "login2": "Login",
+    "gigabyte technology co., ltd.": "Gigabyte", "micro-star international co., ltd.": "MSI",
+    "micro-star international co.,ltd": "MSI", "msi": "MSI", "vmware, inc.": "VMware",
+    "innotek gmbh": "VirtualBox", "microsoft corporation": "Microsoft", "intel corporation": "Intel", "intel": "Intel", "duex": "Duex", "goldentec": "Goldentec",
+    "digitron": "Digitron", "pcware": "PCWare",
+    "biostar group": "Biostar", "asus": "ASUS", "first international computer, inc.": "FIC",
+    "semp toshiba informatica ltda": "Semp Toshiba",
+}
+LIXO_MODELO = re.compile(r"^(to be filled by o\.?e\.?m\.?|system (manufacturer|product name)|default string|oem"
+                         r"|a_m_i|all series|pppppppp.*|windows7)$", re.I)
+
+
+def modelo(fab: str | None, mod: str | None) -> str | None:
+    """Fabricante + modelo do gabinete, sem os textos padrão de BIOS ('To be filled by O.E.M.' etc.)."""
+    fab, mod = txt(fab), txt(mod)
+    fab = None if not fab or LIXO_MODELO.match(fab) else FABRICANTES.get(fab.lower(), fab)
+    mod = None if not mod or LIXO_MODELO.match(mod) else mod
+    if fab and mod and mod.lower() == fab.lower():
+        return fab  # 'Login'/'LOGIN'
+    if fab and mod and mod.lower().startswith(fab.lower()):
+        return fab + mod[len(fab):]  # 'HP'/'HP EliteDesk ...', 'Positivo'/'POSITIVO MASTER D580'
+    return " ".join(p for p in (fab, mod) if p) or None
 GENERICOS = re.compile(r"^(DESKTOP(-\w+)?|BACKUP|BAKUP\d*|PROVA-ELETRONIC|USER-PC|USUARIO-PC|DETRAN|DETRAB|LENOVO"
                        r"|X+|TESTE\d*|ATENDIMENTO|DTRD|WIN-\w+)$", re.I)
 
@@ -92,6 +118,7 @@ def ler(caminho: Path) -> tuple[list[dict], Counter]:
                 "localidade": txt(r.get("localidade")),
                 "mascara": ip_util(r.get("mascara")),
                 "gateway": ip_util(r.get("gateway")),
+                "modelo": modelo(r.get("manufacturer"), r.get("model")),
             }
             for c in ("patrimonio", "serial", "ip"):
                 if txt(r.get(c)) and not d[c]:
