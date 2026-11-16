@@ -5,6 +5,31 @@
 
 <form method="post" action="/guias/nova" class="space-y-6">
   {{ alertas(erro) }}
+  {% if divergencias %}
+  <section class="card border-amber-300 bg-amber-50 ring-1 ring-amber-200" role="alert" id="divergencias">
+    <h2 class="section-title flex items-center gap-2 text-amber-800">{{ icone("alerta", "size-5 text-amber-600") }}Dados diferentes do cadastro de equipamentos</h2>
+    <p class="mt-1 text-sm text-amber-800">A guia tem informações diferentes das que estão registradas para {{ "este equipamento" if divergencias|length == 1 else "estes equipamentos" }}. Confira:</p>
+    {% for d in divergencias %}
+    <div class="mt-4 overflow-x-auto rounded-xl border border-amber-200 bg-card">
+      <p class="border-b border-amber-100 px-4 py-2 text-sm font-semibold text-slate-800">Patrimônio {{ d.patrimonio }}{% if d.eq.hostname %} · {{ d.eq.hostname }}{% endif %}</p>
+      <table class="tabela text-sm">
+        <tr><th>Campo</th><th>Como está registrado</th><th>Como está na guia</th></tr>
+        {% for m in d.mudancas %}<tr><td class="font-medium">{{ m.rotulo }}</td>
+          <td class="text-slate-500">{{ m.atual or "(vazio)" }}</td>
+          <td class="font-semibold text-slate-900">{{ m.novo }}</td></tr>{% endfor %}
+      </table>
+    </div>
+    {% endfor %}
+    <p class="mt-4 text-sm font-medium text-amber-800">Deseja realmente mudar o registro do equipamento com os dados da guia? A guia é emitida com os dados digitados nos dois casos.</p>
+    <input type="hidden" name="assinatura" value="{{ assinatura }}">
+    <div class="mt-3 flex flex-wrap gap-3">
+      <button class="btn" name="cadastro" value="atualizar"
+              data-confirmar="Confirma a alteração? O cadastro {{ 'do equipamento' if divergencias|length == 1 else 'dos ' ~ divergencias|length ~ ' equipamentos' }} passará a ter os dados digitados na guia.">{{ icone("ok", "size-4") }}Sim, corrigir o cadastro</button>
+      <button class="btn btn-ghost" name="cadastro" value="manter">Não, manter o cadastro como está</button>
+    </div>
+    <p class="mt-2 text-xs text-amber-800">Digitou errado na guia? Corrija os campos abaixo e clique em “Salvar e abrir guia” de novo.</p>
+  </section>
+  {% endif %}
   <section class="card">
     <h2 class="section-title mb-5 flex items-center gap-2"><span class="grid size-6 place-items-center rounded-full bg-brand-700 text-xs font-bold text-white">1</span>Dados da guia</h2>
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

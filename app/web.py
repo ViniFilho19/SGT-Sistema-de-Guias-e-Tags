@@ -1,4 +1,6 @@
 """Telas HTML (renderizadas no servidor, sem JavaScript de aplicação)."""
+import hashlib
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -14,7 +16,7 @@ from .config import settings
 from .database import get_db
 from .models import Equipamento, Etiqueta, Guia, User
 from .routers.etiquetas import gerar_etiqueta, qr_data_uri, texto_qr
-from .routers.guias import criar as criar_guia
+from .routers.guias import criar as criar_guia, equipamento_por_patrimonio
 from .schemas import MOTIVOS, EtiquetaCreate, GuiaCreate, UserCreate
 from .security import (bloqueado, confere_senha, criar_token, hash_senha, limpar_falhas, registrar_falha,
                        usuario_por_token)
@@ -165,11 +167,41 @@ def etiqueta_ocultar(id_: int, db: Session = Depends(get_db), user: User = Depen
 
 
 # ---------- guias ----------
-def _form_guia(request, user, v=None, linhas=None, erro=None, status=200):
+def _form_guia(request, user, v=None, linhas=None, erro=None, status=200, divergencias=None, assinatura=""):
     v = v or {"tipo": SAIDA, "motivo": "", "chamado": "", "remetente": "", "destinatario": "", "responsavel": ""}
     linhas = linhas or [{c: "" for c in COLS_ITEM} | {"tipo_equipamento": "Computador"} for _ in range(LINHAS)]
     return pagina(request, "guias_nova.html", user, status, v=v, linhas=linhas, tipos=TIPOS, erro=erro,
-                  tipos_guia=[SAIDA, ENTRADA], motivos=MOTIVOS)
+                  tipos_guia=[SAIDA, ENTRADA], motivos=MOTIVOS, divergencias=divergencias, assinatura=assinatura)
+
+
+# campo da guia -> (atributo do equipamento, rótulo)
+CAMPOS_CADASTRO = {"tipo_equipamento": ("tipo", "Tipo"), "modelo": ("modelo", "Modelo"),
+                   "serial": ("serial", "Nº série"), "hostname": ("hostname", "Hostname"), "ip": ("ip", "IP")}
+
+
+def _divergencias(db: Session, itens) -> list[dict]:
+    """Compara cada equipamento da guia com o cadastro (pelo patrimônio) e lista o que foi digitado diferente."""
+    res, vistos = [], set()
+    for item in itens:
+        eq = equipamento_por_patrimonio(db, item.patrimonio)
+        if not eq or eq.id in vistos:
+            continue
+        vistos.add(eq.id)
+        mudancas = []
+        for campo, (attr, rotulo) in CAMPOS_CADASTRO.items():
+            novo = (getattr(item, campo) or "").strip()
+            atual = (getattr(eq, attr) or "").strip()
+            if novo and novo.casefold() != atual.casefold():
+                mudancas.append({"attr": attr, "rotulo": rotulo, "atual": atual, "novo": novo})
+        if mudancas:
+            res.append({"eq": eq, "patrimonio": eq.patrimonio, "mudancas": mudancas})
+    return res
+
+
+def _assinatura(divs: list[dict]) -> str:
+    """Identifica exatamente as mudanças mostradas; se o formulário mudar, a confirmação é pedida de novo."""
+    base = json.dumps([[d["eq"].id, [[m["attr"], m["novo"]] for m in d["mudancas"]]] for d in divs])
+    return hashlib.sha256(base.encode()).hexdigest()[:16]
 
 
 @router.get("/guias/nova")
@@ -199,8 +231,20 @@ async def guia_criar(request: Request, db: Session = Depends(get_db), user: User
         dados = GuiaCreate(**campos, itens=itens)
     except ValidationError:
         return _form_guia(request, user, v, linhas, "Verifique os campos e informe ao menos um equipamento (IP válido, se preenchido).", 422)
-    guia = criar_guia(dados, db, user)
-    return RedirectResponse(f"/guias/{guia.id}", 303)
+
+    # dados diferentes do cadastro de equipamentos: pergunta antes de corrigir o cadastro
+    divs = _divergencias(db, dados.itens)
+    escolha, assinatura = str(f.get("cadastro", "")), _assinatura(divs) if divs else ""
+    if divs and (escolha not in ("atualizar", "manter") or str(f.get("assinatura", "")) != assinatura):
+        return _form_guia(request, user, v, linhas, divergencias=divs, assinatura=assinatura)
+    atualizou = divs and escolha == "atualizar"
+    if atualizou:
+        for d in divs:
+            for m in d["mudancas"]:
+                setattr(d["eq"], m["attr"], m["novo"])
+            d["eq"].atualizado_em = datetime.now(timezone.utc)
+    guia = criar_guia(dados, db, user)  # o commit também grava as correções do cadastro
+    return RedirectResponse(f"/guias/{guia.id}" + ("?ok=cadastro" if atualizou else ""), 303)
 
 
 SAIDA, ENTRADA = "GUIA DE SAÍDA", "GUIA DE ENTRADA"
@@ -212,7 +256,8 @@ FILTROS = {  # aba -> (rótulo, condição)
     "entregues": ("Entregues", E_SAIDA & (Guia.status == "entregue")),
     "entrada": ("Entrada", Guia.tipo.like(ENTRADA + "%")),
 }
-AVISOS_GUIA = {"entregue": "Entrega registrada.", "reaberta": "Guia voltou para “pronta”."}
+AVISOS_GUIA = {"entregue": "Entrega registrada.", "reaberta": "Guia voltou para “pronta”.",
+               "cadastro": "Guia emitida e cadastro do equipamento corrigido."}
 ERROS_GUIA = {"entrega": "Informe quem entregou e quem retirou (até 200 caracteres cada)."}
 
 
@@ -440,8 +485,7 @@ def relatorios(request: Request, mes: str = "", tipo: str = "todos", db: Session
 @router.get("/equipamentos/buscar")
 def equipamento_buscar(patrimonio: str = "", db: Session = Depends(get_db), user: User = Depends(usuario_web)):
     """Usada pelo formulário de guia: devolve os dados do equipamento com esse patrimônio, se existir."""
-    p = patrimonio.strip()[:100]
-    eq = db.scalar(select(Equipamento).where(func.lower(Equipamento.patrimonio) == p.lower())) if p else None
+    eq = equipamento_por_patrimonio(db, patrimonio)
     if not eq:
         return {"encontrado": False}
     return {"encontrado": True, "tipo": eq.tipo, "modelo": eq.modelo or "", "serial": eq.serial or "",

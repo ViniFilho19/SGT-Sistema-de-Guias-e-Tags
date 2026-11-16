@@ -1,7 +1,7 @@
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..database import get_db
@@ -12,16 +12,26 @@ from ..security import usuario_atual
 router = APIRouter(prefix="/guias", tags=["guias"])
 
 
+def equipamento_por_patrimonio(db: Session, patrimonio: Optional[str]) -> Optional[Equipamento]:
+    """Acha o equipamento pelo patrimônio; '039252' e '39252' são considerados o mesmo."""
+    p = (patrimonio or "").strip()[:100]
+    if not p:
+        return None
+    eq = db.scalar(select(Equipamento).where(func.lower(Equipamento.patrimonio) == p.lower()))
+    if eq or not p.lstrip("0"):
+        return eq
+    return db.scalars(select(Equipamento).where(func.ltrim(Equipamento.patrimonio, "0") == p.lstrip("0"))
+                      .order_by(Equipamento.id)).first()
+
+
 @router.post("", response_model=GuiaOut, status_code=201)
 def criar(dados: GuiaCreate, db: Session = Depends(get_db), user: User = Depends(usuario_atual)):
     guia = Guia(**dados.model_dump(exclude={"itens"}), operador_id=user.id)
     if guia.tipo.startswith("GUIA DE SAÍDA"):  # saída comum ou desfazimento
         guia.status = "pronta"
     for item in dados.itens:
-        eq_id = None
-        if item.patrimonio:  # liga ao cadastro quando o patrimônio já existe
-            eq_id = db.scalar(select(Equipamento.id).where(Equipamento.patrimonio == item.patrimonio))
-        guia.itens.append(GuiaItem(**item.model_dump(), equipamento_id=eq_id))
+        eq = equipamento_por_patrimonio(db, item.patrimonio)  # liga ao cadastro quando o patrimônio já existe
+        guia.itens.append(GuiaItem(**item.model_dump(), equipamento_id=eq.id if eq else None))
     db.add(guia)
     db.commit()
     db.refresh(guia)

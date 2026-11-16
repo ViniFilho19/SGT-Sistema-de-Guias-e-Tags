@@ -7,6 +7,11 @@ document.addEventListener("submit", function (e) {
   var msg = e.target.getAttribute && e.target.getAttribute("data-confirm");
   if (msg && !window.confirm(msg)) e.preventDefault();
 });
+// <button data-confirmar="Pergunta?"> pede confirmação só para esse botão
+document.addEventListener("click", function (e) {
+  var botao = e.target.closest("[data-confirmar]");
+  if (botao && !window.confirm(botao.getAttribute("data-confirmar"))) e.preventDefault();
+});
 // "Registrar entrega" na lista de guias: abre a janela apontando para a guia clicada
 document.addEventListener("click", function (e) {
   var botao = e.target.closest("[data-entrega]");
