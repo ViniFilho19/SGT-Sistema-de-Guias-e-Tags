@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     secret_key: str = "INSEGURO-troque-no-env"
     access_token_minutes: int = 480
     cookie_seguro: bool = False  # True quando estiver atrás de HTTPS
+    # Administrador inicial: criado ao iniciar se não houver nenhum admin ativo (vazio = não usa)
+    admin_usuario: str = ""
+    admin_senha: str = ""
+    admin_nome: str = "Administrador"
     model_config = SettingsConfigDict(env_file=RAIZ / ".env")
 
 

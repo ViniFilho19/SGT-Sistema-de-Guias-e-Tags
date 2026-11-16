@@ -5,16 +5,41 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from .database import Base, engine
+from .database import Base, SessionLocal, engine
 from .migracoes import migrar
 from .routers import auth, equipamentos, etiquetas, guias
 from . import web
+
+
+def admin_inicial():
+    """Cria o administrador do .env (ADMIN_USUARIO/ADMIN_SENHA) se o banco ainda não tiver nenhum admin ativo."""
+    from sqlalchemy import select
+    from .config import settings
+    from .models import User
+    from .security import hash_senha
+    usuario, senha = settings.admin_usuario.strip(), settings.admin_senha
+    if not usuario or not senha:
+        return
+    if len(senha) < 8:
+        print("ADMIN_SENHA ignorada: use pelo menos 8 caracteres.")
+        return
+    with SessionLocal() as db:
+        if db.scalar(select(User.id).where(User.papel == "admin", User.ativo.is_(True)).limit(1)):
+            return
+        u = db.scalar(select(User).where(User.username == usuario))
+        if u:
+            u.papel, u.ativo, u.senha_hash = "admin", True, hash_senha(senha)
+        else:
+            db.add(User(username=usuario, nome=settings.admin_nome, papel="admin", senha_hash=hash_senha(senha)))
+        db.commit()
+        print(f"Administrador inicial '{usuario}' criado.")
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)  # em produção, prefira migrações com Alembic
     migrar(engine)
+    admin_inicial()
     yield
 
 
