@@ -148,6 +148,49 @@
 
 @media (max-width: 640px) { .etq { width: 100%; } }
 
+/* ---------- Relatório impresso (padrão institucional, A4) ---------- */
+.rel-cab, .rel-rodape, .rel-resumo { display: none; }
+@page relatorio {
+  size: A4 portrait;
+  margin: 14mm 12mm 16mm;
+  @bottom-left { content: "SGT · Sistema de Guias e Tags — DETRAN-BA / CTI"; font: 7.5pt sans-serif; color: #555; }
+  @bottom-right { content: "Página " counter(page) " de " counter(pages); font: 7.5pt sans-serif; color: #555; }
+}
+@media print {
+  .relatorio { page: relatorio; color: #000; font-size: 9pt; }
+  .relatorio, .relatorio * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rel-cab { display: flex; align-items: center; gap: 12px; border-bottom: 2.5pt solid #0b2a5b; padding-bottom: 8px; margin-bottom: 12px; }
+  .rel-cab img { height: 46px; width: auto; }
+  .rel-cab .org { font-size: 10pt; white-space: nowrap; font-weight: 700; color: #0b2a5b; line-height: 1.2; }
+  .rel-cab .sub { font-size: 8.5pt; color: #333; }
+  .rel-cab .meta { margin-left: auto; max-width: 48mm; text-align: right; font-size: 8pt; color: #333; line-height: 1.4; }
+  .rel-titulo { display: block !important; margin: 0 0 10px; }
+  .rel-titulo h1 { font-size: 14pt; font-weight: 700; margin: 0; color: #000; }
+  .rel-titulo p { font-size: 9pt; color: #333; margin: 2px 0 0; }
+  .rel-resumo { display: table; width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+  .rel-resumo td { border: 1px solid #9aa9c2; padding: 5px 8px; font-size: 9pt; }
+  .rel-resumo td.v { font-weight: 700; text-align: right; width: 18%; }
+  .rel-resumo td.r { background: #e8edf5; width: 32%; }
+  .relatorio .rel-cards { display: none !important; }
+  .relatorio .section-title { font-size: 10.5pt; color: #0b2a5b; border-bottom: 1.2pt solid #0b2a5b; padding-bottom: 2px;
+    margin: 16px 0 6px !important; break-after: avoid; }
+  .relatorio .card { border: 0 !important; box-shadow: none !important; padding: 0 !important; border-radius: 0 !important; overflow: visible !important; }
+  .relatorio .overflow-x-auto, .relatorio .overflow-hidden { overflow: visible !important; }
+  .relatorio .tabela { border-collapse: collapse; font-size: 8pt; }
+  .relatorio .tabela thead { display: table-header-group; }
+  .relatorio .tabela tr { break-inside: avoid; }
+  .relatorio .tabela th { background: #0b2a5b !important; color: #fff !important; border: 1px solid #0b2a5b; padding: 4px 5px;
+    text-transform: none; letter-spacing: 0; font-size: 8pt; white-space: normal; }
+  .relatorio .tabela td { border: 1px solid #b7c3d6; padding: 3px 5px; color: #000; background: #fff; }
+  .relatorio .tabela tbody tr:nth-child(even) td { background: #f3f6fa; }
+  .relatorio .tabela tr.total td { background: #e8edf5 !important; font-weight: 700; }
+  .relatorio .badge { background: none !important; box-shadow: none !important; padding: 0; color: #000 !important;
+    font-size: 8pt; font-weight: 500; }
+  .relatorio .badge svg, .relatorio .badge > span { display: none; }
+  .rel-rodape { display: flex; gap: 40px; margin-top: 36px; break-inside: avoid; font-size: 8.5pt; }
+  .rel-rodape div { flex: 1; border-top: 1px solid #000; padding-top: 4px; text-align: center; }
+}
+
 @media print {
   @page { margin: 6mm; }
   body { background: #fff; }

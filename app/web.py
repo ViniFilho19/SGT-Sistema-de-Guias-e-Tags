@@ -1,12 +1,13 @@
 """Telas HTML (renderizadas no servidor, sem JavaScript de aplicação)."""
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from sqlalchemy import func, or_, select, true, update
@@ -15,6 +16,7 @@ from sqlalchemy.orm import Session, selectinload
 from .config import settings
 from .database import get_db
 from .models import Equipamento, Etiqueta, Guia, GuiaItem, User
+from .planilha import planilha_mes, planilha_patrimonio
 from .routers.etiquetas import gerar_etiqueta, qr_data_uri, texto_qr
 from .routers.guias import criar as criar_guia, equipamento_por_patrimonio
 from .schemas import MOTIVOS, EtiquetaCreate, GuiaCreate, UserCreate
@@ -468,10 +470,31 @@ def _historico_patrimonio(db: Session, patrimonio: str) -> dict:
 @router.get("/relatorios")
 def relatorios(request: Request, mes: str = "", tipo: str = "todos", patrimonio: str = "",
                db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    emitido = datetime.now(FUSO).strftime("%d/%m/%Y às %H:%M")
     if patrimonio.strip():
         return pagina(request, "relatorios.html", user, hist=_historico_patrimonio(db, patrimonio),
                       mes=mes or datetime.now(FUSO).strftime("%Y-%m"), tipo=tipo, opcoes=TIPOS_REL,
-                      patrimonio=patrimonio.strip())
+                      patrimonio=patrimonio.strip(), emitido=emitido)
+    return pagina(request, "relatorios.html", user, opcoes=TIPOS_REL, emitido=emitido, **_relatorio_mes(db, mes, tipo))
+
+
+@router.get("/relatorios/planilha")
+def relatorios_planilha(mes: str = "", tipo: str = "todos", patrimonio: str = "",
+                        db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    """Mesmo conteúdo do relatório na tela, em planilha Excel (.xlsx)."""
+    if patrimonio.strip():
+        h = _historico_patrimonio(db, patrimonio)
+        conteudo = planilha_patrimonio(h, user.nome)
+        nome = f"historico-patrimonio-{re.sub(r'[^0-9A-Za-z]', '', h['busca'])[:30] or 'busca'}.xlsx"
+    else:
+        r = _relatorio_mes(db, mes, tipo)
+        conteudo = planilha_mes(r, user.nome)
+        nome = f"relatorio-sgt-{r['mes']}-{r['tipo']}.xlsx"
+    return Response(conteudo, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f'attachment; filename="{nome}"'})
+
+
+def _relatorio_mes(db: Session, mes: str, tipo: str) -> dict:
     ano, m = _parse_mes(mes, datetime.now(FUSO))
     if tipo not in dict(TIPOS_REL):
         tipo = "todos"
@@ -504,9 +527,8 @@ def relatorios(request: Request, mes: str = "", tipo: str = "todos", patrimonio:
     tot = {k: sum(l[k] for l in dias.values()) for k in ("entrada", "saida", "itens", "etiquetas")}
     tot["guias"] = tot["entrada"] + tot["saida"]
     tabela = [{"dia": d.strftime("%d/%m/%Y"), **l} for d, l in sorted(dias.items())]
-    return pagina(request, "relatorios.html", user, mes=f"{ano}-{m:02d}", tipo=tipo, opcoes=TIPOS_REL,
-                  tipo_txt=dict(TIPOS_REL)[tipo], titulo=f"{MESES[m - 1]} de {ano}", tot=tot,
-                  tabela=tabela, guias=guias, etiquetas=etqs)
+    return {"mes": f"{ano}-{m:02d}", "tipo": tipo, "tipo_txt": dict(TIPOS_REL)[tipo],
+            "titulo": f"{MESES[m - 1]} de {ano}", "tot": tot, "tabela": tabela, "guias": guias, "etiquetas": etqs}
 
 
 # ---------- equipamentos ----------

@@ -2,16 +2,42 @@
 {% block title %}Relatórios{% endblock %}
 {% macro stat(rotulo, valor, ic, cor="bg-brand-50 text-brand-700") %}
 <div class="card flex items-center gap-4 p-5">
-  <span class="grid size-12 place-items-center rounded-xl {{ cor }} print:hidden">{{ icone(ic, "size-6") }}</span>
+  <span class="grid size-12 place-items-center rounded-xl {{ cor }}">{{ icone(ic, "size-6") }}</span>
   <div><p class="text-sm text-slate-500">{{ rotulo }}</p><p class="text-3xl font-bold tracking-tight text-slate-900">{{ valor }}</p></div>
 </div>
 {% endmacro %}
+{# Resumo em tabela, só na impressão: [(rótulo, valor), ...] em pares por linha #}
+{% macro resumo(pares) %}
+<table class="rel-resumo">{% for linha in pares|batch(2) %}<tr>{% for r, v in linha %}<td class="r">{{ r }}</td><td class="v">{{ v }}</td>{% endfor %}
+  {% if linha|length == 1 %}<td class="r"></td><td class="v"></td>{% endif %}</tr>{% endfor %}</table>
+{% endmacro %}
+{% macro operador(o) %}{% if o.operador_original %}{{ o.operador_original }} <span class="badge b-gray ml-1 print:hidden">planilha</span>{% else %}{{ o.operador.nome }}{% endif %}{% endmacro %}
 {% block content %}
-<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-  {% if hist %}{{ cabecalho("Histórico do patrimônio " ~ hist.busca, "Todas as guias de entrada e saída e as etiquetas deste equipamento") }}
-  {% else %}{{ cabecalho("Relatórios", "Movimentação de " ~ titulo ~ " · " ~ tipo_txt) }}{% endif %}
-  <button class="btn btn-ghost print:hidden" data-print>{{ icone("imprimir", "size-4") }}Imprimir relatório</button>
+{% if hist %}
+  {% set rel_titulo = "Histórico do patrimônio " ~ hist.busca %}
+  {% set rel_sub = "Guias de entrada e saída e etiquetas do equipamento (histórico completo)" %}
+  {% set q_planilha = "patrimonio=" ~ hist.busca|urlencode %}
+{% else %}
+  {% set rel_titulo = "Relatório de movimentação – " ~ titulo %}
+  {% set rel_sub = "Conteúdo: " ~ tipo_txt %}
+  {% set q_planilha = "mes=" ~ mes ~ "&tipo=" ~ tipo %}
+{% endif %}
+<div class="relatorio">
+<header class="rel-cab">
+  <img src="/static/logo.svg" alt="">
+  <div><p class="org">DEPARTAMENTO ESTADUAL DE TRÂNSITO DA BAHIA – DETRAN-BA</p>
+    <p class="sub">Coordenação de Tecnologia da Informação · Service Desk</p></div>
+  <div class="meta">SGT – Sistema de Guias e Tags<br>Emitido em {{ emitido }}<br>por {{ user.nome }}</div>
+</header>
+
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4 print:hidden">
+  {{ cabecalho(rel_titulo if hist else "Relatórios", rel_sub if hist else "Movimentação de " ~ titulo ~ " · " ~ tipo_txt) }}
+  <div class="flex flex-wrap gap-2">
+    <a class="btn btn-ghost" href="/relatorios/planilha?{{ q_planilha }}">{{ icone("relatorio", "size-4") }}Baixar planilha (Excel)</a>
+    <button class="btn btn-ghost" data-print>{{ icone("imprimir", "size-4") }}Imprimir relatório</button>
+  </div>
 </div>
+<div class="rel-titulo hidden"><h1>{{ rel_titulo }}</h1><p>{{ rel_sub }}</p></div>
 
 <div class="mb-6 grid gap-4 lg:grid-cols-2 print:hidden">
   <form class="card flex flex-wrap items-end gap-4 p-5" method="get" action="/relatorios">
@@ -28,8 +54,9 @@
 </div>
 
 {% if hist %}
-  {% if hist.eq %}{% set eq = hist.eq %}
-  <div class="card mb-6 flex flex-wrap gap-x-8 gap-y-2 p-5 text-sm">
+  {% set eq = hist.eq %}
+  {% if eq %}
+  <div class="card mb-6 flex flex-wrap gap-x-8 gap-y-2 p-5 text-sm print:hidden">
     <span><span class="text-slate-500">Hostname</span> <b class="text-slate-900">{{ eq.hostname or "—" }}</b></span>
     <span><span class="text-slate-500">Modelo</span> <b class="text-slate-900">{{ eq.modelo or "—" }}</b></span>
     <span><span class="text-slate-500">Nº série</span> <b class="text-slate-900">{{ eq.serial or "—" }}</b></span>
@@ -40,7 +67,12 @@
   <div class="card mb-6 p-5 text-sm text-slate-600">Nenhum equipamento cadastrado e nenhuma guia com o patrimônio <b>{{ hist.busca }}</b>.</div>
   {% endif %}
 
-  <div class="grid gap-4 sm:grid-cols-3">
+  <h2 class="section-title mb-3 hidden print:block">Dados do equipamento</h2>
+  {{ resumo([("Patrimônio", hist.busca), ("Hostname", eq.hostname or "—" if eq else "—"), ("Modelo", eq.modelo or "—" if eq else "—"),
+             ("Nº série", eq.serial or "—" if eq else "—"), ("IP", eq.ip or "—" if eq else "—"), ("Localidade", eq.localidade or "—" if eq else "—"),
+             ("Guias de saída", hist.saidas), ("Guias de entrada", hist.entradas), ("Etiquetas geradas", hist.etiquetas|length)]) }}
+
+  <div class="rel-cards grid gap-4 sm:grid-cols-3">
     {{ stat("Guias de saída", hist.saidas, "seta", "bg-amber-50 text-amber-700") }}
     {{ stat("Guias de entrada", hist.entradas, "voltar", "bg-emerald-50 text-emerald-700") }}
     {{ stat("Etiquetas geradas", hist.etiquetas|length, "etiqueta") }}
@@ -48,73 +80,81 @@
 
   <h2 class="section-title mt-10 mb-3">Guias com este patrimônio</h2>
   <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
-    <tr><th>Nº</th><th>Data</th><th>Tipo</th><th>Chamado</th><th>Remetente → Destinatário</th><th>Hostname na guia</th><th>Operador</th><th class="print:hidden"></th></tr>
-    {% for i in hist.movs %}{% set g = i.guia %}<tr><td class="font-semibold text-slate-900">{{ g.id }}</td><td class="whitespace-nowrap">{{ i.data }}</td>
-      <td>{{ gu.tipo(g) }} {{ gu.situacao(g) if 'SAÍDA' in g.tipo }}</td>
+    <thead><tr><th>Nº</th><th>Data</th><th>Tipo</th><th>Situação</th><th>Chamado</th><th>Remetente → Destinatário</th><th>Hostname na guia</th><th>Operador</th><th class="print:hidden"></th></tr></thead>
+    <tbody>{% for i in hist.movs %}{% set g = i.guia %}<tr><td class="font-semibold text-slate-900">{{ g.id }}</td><td class="whitespace-nowrap">{{ i.data }}</td>
+      <td>{{ gu.tipo(g) }}</td><td>{{ gu.situacao(g) }}</td>
       <td>{{ g.chamado or "—" }}</td><td>{{ g.remetente }} <span class="text-slate-400">→</span> {{ g.destinatario }}</td>
-      <td>{{ i.hostname or "—" }}</td>
-      <td>{% if g.operador_original %}{{ g.operador_original }} <span class="badge b-gray ml-1">planilha</span>{% else %}{{ g.operador.nome }}{% endif %}</td>
+      <td>{{ i.hostname or "—" }}</td><td>{{ operador(g) }}</td>
       <td class="text-right print:hidden"><a class="btn btn-ghost btn-sm" href="/guias/{{ g.id }}">Abrir</a></td></tr>
-    {% else %}<tr><td colspan="8" class="py-10 text-center text-slate-500">Nenhuma guia com este patrimônio.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="9" class="py-10 text-center text-slate-500">Nenhuma guia com este patrimônio.</td></tr>{% endfor %}</tbody>
   </table></div></div>
 
   {% if hist.etiquetas %}
   <h2 class="section-title mt-10 mb-3">Etiquetas deste equipamento</h2>
   <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
-    <tr><th>Data</th><th>Hostname</th><th>IP</th><th>Localidade</th><th>Operador</th></tr>
-    {% for e in hist.etiquetas %}<tr><td class="whitespace-nowrap">{{ e.data }}</td><td class="font-medium text-slate-900">{{ e.foto.hostname or "" }}</td>
-      <td class="font-mono text-xs">{{ e.foto.ip or "" }}</td><td>{{ e.foto.localidade or "" }}</td>
-      <td>{% if e.operador_original %}{{ e.operador_original }} <span class="badge b-gray ml-1">planilha</span>{% else %}{{ e.operador.nome }}{% endif %}</td></tr>{% endfor %}
+    <thead><tr><th>Data</th><th>Hostname</th><th>IP</th><th>Localidade</th><th>Operador</th></tr></thead>
+    <tbody>{% for e in hist.etiquetas %}<tr><td class="whitespace-nowrap">{{ e.data }}</td><td class="font-medium text-slate-900">{{ e.foto.hostname or "" }}</td>
+      <td class="font-mono text-xs">{{ e.foto.ip or "" }}</td><td>{{ e.foto.localidade or "" }}</td><td>{{ operador(e) }}</td></tr>{% endfor %}</tbody>
   </table></div></div>
   {% endif %}
+
 {% else %}
+  <h2 class="section-title mb-3 hidden print:block">Resumo do período</h2>
+  {% set pares = [] %}
+  {% if tipo != "etiquetas" %}{% set pares = pares + [("Guias emitidas", tot.guias), ("Equipamentos movimentados", tot.itens),
+                                                      ("Guias de entrada", tot.entrada), ("Guias de saída", tot.saida)] %}{% endif %}
+  {% if tipo != "guias" %}{% set pares = pares + [("Etiquetas geradas", tot.etiquetas)] %}{% endif %}
+  {{ resumo(pares) }}
 
-<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-  {% if tipo != "etiquetas" %}
-    {{ stat("Guias emitidas", tot.guias, "guia") }}
-    {{ stat("Guias de entrada", tot.entrada, "voltar", "bg-emerald-50 text-emerald-700") }}
-    {{ stat("Guias de saída", tot.saida, "seta", "bg-amber-50 text-amber-700") }}
-    {{ stat("Equipamentos movimentados", tot.itens, "equipamento") }}
-  {% endif %}
-  {% if tipo != "guias" %}{{ stat("Etiquetas geradas", tot.etiquetas, "etiqueta") }}{% endif %}
-</div>
+  <div class="rel-cards grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% if tipo != "etiquetas" %}
+      {{ stat("Guias emitidas", tot.guias, "guia") }}
+      {{ stat("Guias de entrada", tot.entrada, "voltar", "bg-emerald-50 text-emerald-700") }}
+      {{ stat("Guias de saída", tot.saida, "seta", "bg-amber-50 text-amber-700") }}
+      {{ stat("Equipamentos movimentados", tot.itens, "equipamento") }}
+    {% endif %}
+    {% if tipo != "guias" %}{{ stat("Etiquetas geradas", tot.etiquetas, "etiqueta") }}{% endif %}
+  </div>
 
-<h2 class="section-title mt-10 mb-3">Movimentação por dia</h2>
-<div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
-  <tr><th>Dia</th>
-    {% if tipo != "etiquetas" %}<th>Guias de entrada</th><th>Guias de saída</th><th>Equipamentos</th>{% endif %}
-    {% if tipo != "guias" %}<th>Etiquetas</th>{% endif %}</tr>
-  {% for d in tabela %}<tr><td class="font-medium text-slate-900">{{ d.dia }}</td>
-    {% if tipo != "etiquetas" %}<td>{{ d.entrada }}</td><td>{{ d.saida }}</td><td>{{ d.itens }}</td>{% endif %}
-    {% if tipo != "guias" %}<td>{{ d.etiquetas }}</td>{% endif %}</tr>
-  {% else %}<tr><td colspan="5" class="py-10 text-center text-slate-500">Sem movimentação neste mês.</td></tr>{% endfor %}
-  {% if tabela %}<tr class="font-semibold"><td class="bg-slate-50 text-slate-900">Total</td>
-    {% if tipo != "etiquetas" %}<td class="bg-slate-50">{{ tot.entrada }}</td><td class="bg-slate-50">{{ tot.saida }}</td><td class="bg-slate-50">{{ tot.itens }}</td>{% endif %}
-    {% if tipo != "guias" %}<td class="bg-slate-50">{{ tot.etiquetas }}</td>{% endif %}</tr>{% endif %}
-</table></div></div>
-
-{% if tipo != "etiquetas" and guias %}
-<h2 class="section-title mt-10 mb-3">Guias do mês</h2>
-<div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
-  <tr><th>Nº</th><th>Data</th><th>Tipo</th><th>Chamado</th><th>Remetente → Destinatário</th><th>Itens</th><th>Operador</th><th class="print:hidden"></th></tr>
-  {% for g in guias %}<tr><td class="font-semibold text-slate-900">{{ g.id }}</td><td class="whitespace-nowrap">{{ g.data }}</td>
-    <td>{{ gu.tipo(g) }} {{ gu.situacao(g) if 'SAÍDA' in g.tipo }}</td>
-    <td>{{ g.chamado or "—" }}</td><td>{{ g.remetente }} <span class="text-slate-400">→</span> {{ g.destinatario }}</td><td>{{ g.itens|length }}</td>
-    <td>{% if g.operador_original %}{{ g.operador_original }} <span class="badge b-gray ml-1">planilha</span>{% else %}{{ g.operador.nome }}{% endif %}</td>
-    <td class="text-right print:hidden"><a class="btn btn-ghost btn-sm" href="/guias/{{ g.id }}">Abrir</a></td></tr>{% endfor %}
-</table></div></div>
-{% endif %}
-
-{% if tipo != "guias" and etiquetas %}
-<h2 class="section-title mt-10">Etiquetas do mês</h2>
-<p class="mb-3 text-sm text-slate-500">Inclui etiquetas já removidas da lista de recentes.</p>
-<div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
-  <tr><th>Data</th><th>Hostname</th><th>IP</th><th>Patrimônio</th><th>Nº série</th><th>Localidade</th><th>Operador</th></tr>
-  {% for e in etiquetas %}<tr><td class="whitespace-nowrap">{{ e.data }}</td><td class="font-medium text-slate-900">{{ e.foto.hostname or "" }}</td>
-    <td class="font-mono text-xs">{{ e.foto.ip or "" }}</td>
-    <td>{{ e.foto.patrimonio or "" }}</td><td>{{ e.foto.serial or "" }}</td>
-    <td>{{ e.foto.localidade or "" }}</td><td>{% if e.operador_original %}{{ e.operador_original }} <span class="badge b-gray ml-1">planilha</span>{% else %}{{ e.operador.nome }}{% endif %}</td></tr>{% endfor %}
+  <h2 class="section-title mt-10 mb-3">Movimentação por dia</h2>
+  <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
+    <thead><tr><th>Dia</th>
+      {% if tipo != "etiquetas" %}<th>Guias de entrada</th><th>Guias de saída</th><th>Equipamentos</th>{% endif %}
+      {% if tipo != "guias" %}<th>Etiquetas</th>{% endif %}</tr></thead>
+    <tbody>{% for d in tabela %}<tr><td class="font-medium text-slate-900">{{ d.dia }}</td>
+      {% if tipo != "etiquetas" %}<td>{{ d.entrada }}</td><td>{{ d.saida }}</td><td>{{ d.itens }}</td>{% endif %}
+      {% if tipo != "guias" %}<td>{{ d.etiquetas }}</td>{% endif %}</tr>
+    {% else %}<tr><td colspan="5" class="py-10 text-center text-slate-500">Sem movimentação neste mês.</td></tr>{% endfor %}
+    {% if tabela %}<tr class="total font-semibold"><td class="bg-slate-50 text-slate-900">Total</td>
+      {% if tipo != "etiquetas" %}<td class="bg-slate-50">{{ tot.entrada }}</td><td class="bg-slate-50">{{ tot.saida }}</td><td class="bg-slate-50">{{ tot.itens }}</td>{% endif %}
+      {% if tipo != "guias" %}<td class="bg-slate-50">{{ tot.etiquetas }}</td>{% endif %}</tr>{% endif %}</tbody>
   </table></div></div>
+
+  {% if tipo != "etiquetas" and guias %}
+  <h2 class="section-title mt-10 mb-3">Guias do mês</h2>
+  <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
+    <thead><tr><th>Nº</th><th>Data</th><th>Tipo</th><th>Situação</th><th>Chamado</th><th>Remetente → Destinatário</th><th>Itens</th><th>Operador</th><th class="print:hidden"></th></tr></thead>
+    <tbody>{% for g in guias %}<tr><td class="font-semibold text-slate-900">{{ g.id }}</td><td class="whitespace-nowrap">{{ g.data }}</td>
+      <td>{{ gu.tipo(g) }}</td><td>{{ gu.situacao(g) }}</td>
+      <td>{{ g.chamado or "—" }}</td><td>{{ g.remetente }} <span class="text-slate-400">→</span> {{ g.destinatario }}</td><td>{{ g.itens|length }}</td>
+      <td>{{ operador(g) }}</td>
+      <td class="text-right print:hidden"><a class="btn btn-ghost btn-sm" href="/guias/{{ g.id }}">Abrir</a></td></tr>{% endfor %}</tbody>
+  </table></div></div>
+  {% endif %}
+
+  {% if tipo != "guias" and etiquetas %}
+  <h2 class="section-title mt-10">Etiquetas do mês</h2>
+  <p class="mb-3 text-sm text-slate-500 print:hidden">Inclui etiquetas já removidas da lista de recentes.</p>
+  <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
+    <thead><tr><th>Data</th><th>Hostname</th><th>IP</th><th>Patrimônio</th><th>Nº série</th><th>Localidade</th><th>Operador</th></tr></thead>
+    <tbody>{% for e in etiquetas %}<tr><td class="whitespace-nowrap">{{ e.data }}</td><td class="font-medium text-slate-900">{{ e.foto.hostname or "" }}</td>
+      <td class="font-mono text-xs">{{ e.foto.ip or "" }}</td>
+      <td>{{ e.foto.patrimonio or "" }}</td><td>{{ e.foto.serial or "" }}</td>
+      <td>{{ e.foto.localidade or "" }}</td><td>{{ operador(e) }}</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+  {% endif %}
 {% endif %}
-{% endif %}
+
+<div class="rel-rodape"><div>Responsável pela emissão<br>{{ user.nome }}</div><div>Conferido por (nome e assinatura)</div><div>Data ____/____/________</div></div>
+</div>
 {% endblock %}
