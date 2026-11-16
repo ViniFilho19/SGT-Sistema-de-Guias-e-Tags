@@ -8,16 +8,66 @@
 {% endmacro %}
 {% block content %}
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-  {{ cabecalho("Relatórios", "Movimentação de " ~ titulo ~ " · " ~ tipo_txt) }}
+  {% if hist %}{{ cabecalho("Histórico do patrimônio " ~ hist.busca, "Todas as guias de entrada e saída e as etiquetas deste equipamento") }}
+  {% else %}{{ cabecalho("Relatórios", "Movimentação de " ~ titulo ~ " · " ~ tipo_txt) }}{% endif %}
   <button class="btn btn-ghost print:hidden" data-print>{{ icone("imprimir", "size-4") }}Imprimir relatório</button>
 </div>
 
-<form class="card mb-6 flex flex-wrap items-end gap-4 p-5 print:hidden" method="get" action="/relatorios">
-  <label class="w-full sm:w-48">Mês/ano<input type="month" name="mes" value="{{ mes }}" required></label>
-  <label class="w-full sm:w-56">Tipo<select name="tipo">
-    {% for valor, texto in opcoes %}<option value="{{ valor }}" {{ "selected" if valor == tipo }}>{{ texto }}</option>{% endfor %}</select></label>
-  <button class="btn">Gerar relatório</button>
-</form>
+<div class="mb-6 grid gap-4 lg:grid-cols-2 print:hidden">
+  <form class="card flex flex-wrap items-end gap-4 p-5" method="get" action="/relatorios">
+    <label class="w-full sm:w-44">Mês/ano<input type="month" name="mes" value="{{ mes }}" required></label>
+    <label class="w-full sm:w-48">Tipo<select name="tipo">
+      {% for valor, texto in opcoes %}<option value="{{ valor }}" {{ "selected" if valor == tipo }}>{{ texto }}</option>{% endfor %}</select></label>
+    <button class="btn">Gerar relatório</button>
+  </form>
+  <form class="card flex flex-wrap items-end gap-4 p-5" method="get" action="/relatorios">
+    <label class="min-w-0 flex-1">Histórico por patrimônio<input name="patrimonio" value="{{ patrimonio or '' }}" required
+      maxlength="100" autocomplete="off" placeholder="Ex.: 039252"></label>
+    <button class="btn">{{ icone("buscar", "size-4") }}Pesquisar</button>
+  </form>
+</div>
+
+{% if hist %}
+  {% if hist.eq %}{% set eq = hist.eq %}
+  <div class="card mb-6 flex flex-wrap gap-x-8 gap-y-2 p-5 text-sm">
+    <span><span class="text-slate-500">Hostname</span> <b class="text-slate-900">{{ eq.hostname or "—" }}</b></span>
+    <span><span class="text-slate-500">Modelo</span> <b class="text-slate-900">{{ eq.modelo or "—" }}</b></span>
+    <span><span class="text-slate-500">Nº série</span> <b class="text-slate-900">{{ eq.serial or "—" }}</b></span>
+    <span><span class="text-slate-500">IP</span> <b class="font-mono text-slate-900">{{ eq.ip or "—" }}</b></span>
+    <span><span class="text-slate-500">Localidade</span> <b class="text-slate-900">{{ eq.localidade or "—" }}</b></span>
+  </div>
+  {% elif not hist.movs %}
+  <div class="card mb-6 p-5 text-sm text-slate-600">Nenhum equipamento cadastrado e nenhuma guia com o patrimônio <b>{{ hist.busca }}</b>.</div>
+  {% endif %}
+
+  <div class="grid gap-4 sm:grid-cols-3">
+    {{ stat("Guias de saída", hist.saidas, "seta", "bg-amber-50 text-amber-700") }}
+    {{ stat("Guias de entrada", hist.entradas, "voltar", "bg-emerald-50 text-emerald-700") }}
+    {{ stat("Etiquetas geradas", hist.etiquetas|length, "etiqueta") }}
+  </div>
+
+  <h2 class="section-title mt-10 mb-3">Guias com este patrimônio</h2>
+  <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
+    <tr><th>Nº</th><th>Data</th><th>Tipo</th><th>Chamado</th><th>Remetente → Destinatário</th><th>Hostname na guia</th><th>Operador</th><th class="print:hidden"></th></tr>
+    {% for i in hist.movs %}{% set g = i.guia %}<tr><td class="font-semibold text-slate-900">{{ g.id }}</td><td class="whitespace-nowrap">{{ i.data }}</td>
+      <td>{{ gu.tipo(g) }} {{ gu.situacao(g) if 'SAÍDA' in g.tipo }}</td>
+      <td>{{ g.chamado or "—" }}</td><td>{{ g.remetente }} <span class="text-slate-400">→</span> {{ g.destinatario }}</td>
+      <td>{{ i.hostname or "—" }}</td>
+      <td>{% if g.operador_original %}{{ g.operador_original }} <span class="badge b-gray ml-1">planilha</span>{% else %}{{ g.operador.nome }}{% endif %}</td>
+      <td class="text-right print:hidden"><a class="btn btn-ghost btn-sm" href="/guias/{{ g.id }}">Abrir</a></td></tr>
+    {% else %}<tr><td colspan="8" class="py-10 text-center text-slate-500">Nenhuma guia com este patrimônio.</td></tr>{% endfor %}
+  </table></div></div>
+
+  {% if hist.etiquetas %}
+  <h2 class="section-title mt-10 mb-3">Etiquetas deste equipamento</h2>
+  <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
+    <tr><th>Data</th><th>Hostname</th><th>IP</th><th>Localidade</th><th>Operador</th></tr>
+    {% for e in hist.etiquetas %}<tr><td class="whitespace-nowrap">{{ e.data }}</td><td class="font-medium text-slate-900">{{ e.foto.hostname or "" }}</td>
+      <td class="font-mono text-xs">{{ e.foto.ip or "" }}</td><td>{{ e.foto.localidade or "" }}</td>
+      <td>{% if e.operador_original %}{{ e.operador_original }} <span class="badge b-gray ml-1">planilha</span>{% else %}{{ e.operador.nome }}{% endif %}</td></tr>{% endfor %}
+  </table></div></div>
+  {% endif %}
+{% else %}
 
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
   {% if tipo != "etiquetas" %}
@@ -64,6 +114,7 @@
     <td class="font-mono text-xs">{{ e.foto.ip or "" }}</td>
     <td>{{ e.foto.patrimonio or "" }}</td><td>{{ e.foto.serial or "" }}</td>
     <td>{{ e.foto.localidade or "" }}</td><td>{% if e.operador_original %}{{ e.operador_original }} <span class="badge b-gray ml-1">planilha</span>{% else %}{{ e.operador.nome }}{% endif %}</td></tr>{% endfor %}
-</table></div></div>
+  </table></div></div>
+{% endif %}
 {% endif %}
 {% endblock %}

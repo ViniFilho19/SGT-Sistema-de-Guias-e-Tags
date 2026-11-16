@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from .config import settings
 from .database import get_db
-from .models import Equipamento, Etiqueta, Guia, User
+from .models import Equipamento, Etiqueta, Guia, GuiaItem, User
 from .routers.etiquetas import gerar_etiqueta, qr_data_uri, texto_qr
 from .routers.guias import criar as criar_guia, equipamento_por_patrimonio
 from .schemas import MOTIVOS, EtiquetaCreate, GuiaCreate, UserCreate
@@ -441,9 +441,37 @@ def _parse_mes(txt, hoje):
     return hoje.year, hoje.month
 
 
+def _historico_patrimonio(db: Session, patrimonio: str) -> dict:
+    """Todas as guias (entrada e saída) e etiquetas de um patrimônio, da mais recente para a mais antiga."""
+    p = patrimonio.strip()[:100]
+    eq = equipamento_por_patrimonio(db, p)
+    chave = p.lstrip("0") or p
+    cond = or_(func.lower(GuiaItem.patrimonio) == p.lower(), func.ltrim(GuiaItem.patrimonio, "0") == chave)
+    if eq:
+        cond = or_(cond, GuiaItem.equipamento_id == eq.id)
+    itens = db.scalars(select(GuiaItem).options(selectinload(GuiaItem.guia).selectinload(Guia.operador))
+                       .where(cond)).all()
+    movs = sorted({i.guia_id: i for i in itens}.values(), key=lambda i: i.guia.criado_em, reverse=True)
+    for i in movs:
+        i.data = hora_local(i.guia.criado_em)
+    etqs = []
+    if eq:
+        etqs = db.scalars(select(Etiqueta).options(selectinload(Etiqueta.operador))
+                          .where(Etiqueta.equipamento_id == eq.id).order_by(Etiqueta.criado_em.desc())).all()
+        for e in etqs:
+            e.data = hora_local(e.criado_em)
+    entradas = sum(1 for i in movs if "ENTRADA" in i.guia.tipo)
+    return {"busca": p, "eq": eq, "movs": movs, "etiquetas": etqs, "entradas": entradas,
+            "saidas": len(movs) - entradas}
+
+
 @router.get("/relatorios")
-def relatorios(request: Request, mes: str = "", tipo: str = "todos", db: Session = Depends(get_db),
-               user: User = Depends(usuario_web)):
+def relatorios(request: Request, mes: str = "", tipo: str = "todos", patrimonio: str = "",
+               db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    if patrimonio.strip():
+        return pagina(request, "relatorios.html", user, hist=_historico_patrimonio(db, patrimonio),
+                      mes=mes or datetime.now(FUSO).strftime("%Y-%m"), tipo=tipo, opcoes=TIPOS_REL,
+                      patrimonio=patrimonio.strip())
     ano, m = _parse_mes(mes, datetime.now(FUSO))
     if tipo not in dict(TIPOS_REL):
         tipo = "todos"
