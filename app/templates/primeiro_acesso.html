@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% from "_icones.html" import alertas %}
+{% block title %}Primeiro acesso{% endblock %}
+{% block content %}
+<div class="flex min-h-[75vh] items-center justify-center">
+  <div class="w-full max-w-md">
+    <div class="mb-8 text-center">
+      <img src="/static/logo.svg" alt="" class="mx-auto size-16 dark:rounded-xl dark:bg-white dark:p-1">
+      <p class="mt-4 text-[11px] font-semibold tracking-[.25em] text-brand-600">DETRAN BAHIA</p>
+      <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">Primeiro acesso ao SGT</h1>
+      <p class="page-sub">Nenhum administrador cadastrado. Crie a conta de administrador para começar a usar o sistema.</p>
+    </div>
+    <form class="card space-y-5 shadow-lg shadow-slate-200/60" method="post" action="/primeiro-acesso">
+      {{ alertas(erro) }}
+      <label>Nome completo<input name="nome" value="{{ v.nome }}" autocomplete="name" required autofocus></label>
+      <label>Usuário (login)<input name="username" value="{{ v.username }}" autocomplete="username" required
+             pattern="[A-Za-z0-9._\-]{3,50}" title="3 a 50 letras, números, . _ -"></label>
+      <label>Senha<input name="senha" type="password" autocomplete="new-password" minlength="8" maxlength="72" required></label>
+      <label>Confirme a senha<input name="senha2" type="password" autocomplete="new-password" minlength="8" maxlength="72" required></label>
+      <p class="text-xs text-slate-500">Mínimo de 8 caracteres. Depois de entrar, os demais usuários são criados no menu <strong>Usuários</strong>.</p>
+      <button class="btn w-full py-2.5">Criar administrador</button>
+    </form>
+    <p class="mt-6 text-center text-xs text-slate-400">CTI · Service Desk — DETRAN-BA</p>
+  </div>
+</div>
+{% endblock %}

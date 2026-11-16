@@ -10,7 +10,7 @@
       <p class="page-sub">Sistema de Guias e Tags</p>
     </div>
     <form class="card space-y-5 shadow-lg shadow-slate-200/60" method="post" action="/login">
-      {{ alertas(erro) }}
+      {{ alertas(erro, ok) }}
       <label>Usuário<input name="username" autocomplete="username" required autofocus></label>
       <label>Senha<input name="password" type="password" autocomplete="current-password" required></label>
       <button class="btn w-full py-2.5">Acessar</button>

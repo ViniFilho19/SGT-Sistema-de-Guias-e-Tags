@@ -86,9 +86,53 @@ def hora_local(dt, fmt="%d/%m/%Y %H:%M"):
 
 
 # ---------- sessão ----------
+def _tem_admin(db: Session) -> bool:
+    return db.scalar(select(User.id).where(User.papel == "admin", User.ativo.is_(True)).limit(1)) is not None
+
+
 @router.get("/login")
-def login_form(request: Request):
-    return pagina(request, "login.html")
+def login_form(request: Request, ok: str = "", db: Session = Depends(get_db)):
+    if not _tem_admin(db):  # sistema novo (ou sem administrador ativo): vai para o primeiro acesso
+        return RedirectResponse("/primeiro-acesso", 303)
+    return pagina(request, "login.html", ok="Administrador criado. Entre com o login e a senha cadastrados."
+                  if ok == "admin" else None)
+
+
+# ---------- primeiro acesso: cria o administrador quando ainda não existe nenhum ----------
+@router.get("/primeiro-acesso")
+def primeiro_acesso(request: Request, db: Session = Depends(get_db)):
+    if _tem_admin(db):
+        return RedirectResponse("/login", 303)
+    return pagina(request, "primeiro_acesso.html", v={"username": "", "nome": ""})
+
+
+@router.post("/primeiro-acesso")
+def primeiro_acesso_criar(request: Request, username: str = Form(""), nome: str = Form(""), senha: str = Form(""),
+                          senha2: str = Form(""), db: Session = Depends(get_db)):
+    if _tem_admin(db):  # alguém já configurou: não permite criar outro administrador por aqui
+        return RedirectResponse("/login", 303)
+    v = dict(username=username.strip(), nome=nome.strip())
+
+    def erro(msg):
+        return pagina(request, "primeiro_acesso.html", status=422, v=v, erro=msg)
+
+    if not _senha_ok(senha):
+        return erro(ERROS["senha"])
+    if senha != senha2:
+        return erro("As senhas não conferem.")
+    try:
+        dados = UserCreate(**v, senha=senha, papel="admin")
+    except ValidationError as e:
+        campos = sorted({str(x["loc"][0]) for x in e.errors()})
+        return erro("Verifique os campos: " + ", ".join(campos) + " (login: 3 a 50 letras, números, . _ -).")
+    existente = db.scalar(select(User).where(func.lower(User.username) == dados.username.lower()))
+    if existente:  # login já existe (ex.: admin desativado ou operador): promove e redefine a senha
+        existente.nome, existente.papel, existente.ativo = dados.nome, "admin", True
+        existente.senha_hash = hash_senha(dados.senha)
+    else:
+        db.add(User(username=dados.username, nome=dados.nome, senha_hash=hash_senha(dados.senha), papel="admin"))
+    db.commit()
+    return RedirectResponse("/login?ok=admin", 303)
 
 
 @router.post("/login")
