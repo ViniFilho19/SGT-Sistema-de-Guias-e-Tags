@@ -40,7 +40,7 @@
 </div>
 <div class="rel-titulo hidden"><h1>{{ rel_titulo }}</h1><p>{{ rel_sub }}</p></div>
 
-<div class="mb-6 grid gap-4 xl:grid-cols-[3fr_2fr] print:hidden">
+<div class="mb-6 grid gap-4 print:hidden">
   <form class="card flex flex-wrap items-end gap-4 p-5" method="get" action="/relatorios" data-periodos>
     <label class="w-full sm:w-44">Período<select name="periodo">
       {% for valor, texto in periodos %}<option value="{{ valor }}" {{ "selected" if valor == periodo }}>{{ texto }}</option>{% endfor %}</select></label>
@@ -56,7 +56,7 @@
     <button class="btn">Gerar relatório</button>
   </form>
   <form class="card flex flex-wrap items-end gap-4 p-5" method="get" action="/relatorios">
-    <label class="min-w-0 flex-1">Movimentações da máquina<input name="patrimonio" value="{{ patrimonio or '' }}" required
+    <label class="w-full sm:w-auto sm:min-w-96 sm:flex-1">Movimentações da máquina<input name="patrimonio" value="{{ patrimonio or '' }}" required
       maxlength="100" autocomplete="off" placeholder="Patrimônio ou nº de série. Ex.: 039252 ou 1AG43CN4W"></label>
     <button class="btn">{{ icone("buscar", "size-4") }}Pesquisar</button>
   </form>
