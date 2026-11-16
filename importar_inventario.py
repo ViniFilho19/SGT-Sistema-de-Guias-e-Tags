@@ -56,11 +56,24 @@ def modelo(fab: str | None, mod: str | None) -> str | None:
     fab, mod = txt(fab), txt(mod)
     fab = None if not fab or LIXO_MODELO.match(fab) else FABRICANTES.get(fab.lower(), fab)
     mod = None if not mod or LIXO_MODELO.match(mod) else mod
-    if fab and mod and mod.lower() == fab.lower():
-        return fab  # 'Login'/'LOGIN'
     if fab and mod and mod.lower().startswith(fab.lower()):
-        return fab + mod[len(fab):]  # 'HP'/'HP EliteDesk ...', 'Positivo'/'POSITIVO MASTER D580'
-    return " ".join(p for p in (fab, mod) if p) or None
+        mod = mod[len(fab):]  # 'HP'/'HP EliteDesk ...', 'Positivo'/'POSITIVO MASTER D580'
+    return nome_sem_codigo(" ".join(p for p in (fab, mod) if p)) or fab
+
+
+def nome_sem_codigo(nome: str) -> str | None:
+    """Só o nome, sem códigos: 'Positivo POS-PIQ77CL' -> 'Positivo'; 'HP EliteDesk 800 G4 SFF' -> 'HP EliteDesk'."""
+    palavras = []
+    for i, p in enumerate(nome.split()):
+        if re.search(r"[\d\-#.]", p) or p.upper() in ("SFF", "MT", "VIRTUAL", "STANDARD"):
+            break
+        if i > 0 and p.isupper() and len(p) <= 4:
+            continue  # siglas de código: 'ST', 'MSW', 'STI', 'DVID', 'ONE'
+        p = p.capitalize() if p.isupper() and len(p) > 3 else p
+        p = p[0].upper() + p[1:]
+        if p.lower() not in (x.lower() for x in palavras):
+            palavras.append(p)
+    return " ".join(palavras) if palavras and len(palavras[0]) > 1 else None
 GENERICOS = re.compile(r"^(DESKTOP(-\w+)?|BACKUP|BAKUP\d*|PROVA-ELETRONIC|USER-PC|USUARIO-PC|DETRAN|DETRAB|LENOVO"
                        r"|X+|TESTE\d*|ATENDIMENTO|DTRD|WIN-\w+)$", re.I)
 
