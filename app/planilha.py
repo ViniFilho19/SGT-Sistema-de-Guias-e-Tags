@@ -135,22 +135,22 @@ def planilha_mes(r: dict, usuario: str) -> bytes:
     sub = f"Conteúdo: {r['tipo_txt']}"
     t = r["tot"]
     resumo = []
-    if r["tipo"] != "etiquetas":
+    if r["com_guias"]:
         resumo += [["Guias emitidas", t["guias"]], ["Guias de entrada", t["entrada"]], ["Guias de saída", t["saida"]],
                    ["Equipamentos movimentados", t["itens"]]]
-    if r["tipo"] != "guias":
+    if r["com_etq"]:
         resumo.append(["Etiquetas geradas", t["etiquetas"]])
     ws = _aba(wb, "Resumo", titulo, sub, usuario, ["Indicador", "Quantidade"], resumo, [34, 14], primeira=True)
 
     dias = [[d["dia"], d["entrada"], d["saida"], d["itens"], d["etiquetas"]] for d in r["tabela"]]
-    _aba(wb, "Por dia", titulo, sub, usuario, ["Dia", "Guias de entrada", "Guias de saída", "Equipamentos", "Etiquetas"],
+    _aba(wb, "Por " + r["grupo"].lower(), titulo, sub, usuario, [r["grupo"], "Guias de entrada", "Guias de saída", "Equipamentos", "Etiquetas"],
          dias, [14, 16, 16, 16, 12], total=["Total", t["entrada"], t["saida"], t["itens"], t["etiquetas"]])
-    if r["tipo"] != "etiquetas":
+    if r["com_guias"]:
         _aba(wb, "Guias", titulo, sub, usuario, CAB_GUIAS, _linhas_guias(r["guias"]), LARG_GUIAS)
         itens = [[g.id, _local(g.criado_em), _tipo(g), i.tipo_equipamento, i.modelo or "", i.patrimonio or "",
                   i.serial or "", i.hostname or "", i.ip or ""] for g in r["guias"] for i in g.itens]
         _aba(wb, "Equipamentos", titulo, sub, usuario, CAB_ITENS, itens, LARG_ITENS)
-    if r["tipo"] != "guias":
+    if r["com_etq"]:
         _aba(wb, "Etiquetas", titulo, sub, usuario, CAB_ETQ, _linhas_etiquetas(r["etiquetas"]), LARG_ETQ)
     return _salvar(wb)
 

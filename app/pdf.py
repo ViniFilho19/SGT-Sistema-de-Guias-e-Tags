@@ -149,36 +149,36 @@ def pdf_mes(r: dict, usuario: str) -> bytes:
     h = _cabecalho(titulo, f"Conteúdo: {r['tipo_txt']}", usuario)
     t = r["tot"]
     pares = []
-    if r["tipo"] != "etiquetas":
+    if r["com_guias"]:
         pares += [("Guias emitidas", t["guias"]), ("Equipamentos movimentados", t["itens"]),
                   ("Guias de entrada", t["entrada"]), ("Guias de saída", t["saida"])]
-    if r["tipo"] != "guias":
+    if r["com_etq"]:
         pares.append(("Etiquetas geradas", t["etiquetas"]))
     h += [Paragraph("Resumo do período", S_SEC), _resumo(pares)]
 
-    cab, pesos, tot = ["Dia"], [1.2], ["Total"]
-    if r["tipo"] != "etiquetas":
+    cab, pesos, tot = [r["grupo"]], [1.2], ["Total"]
+    if r["com_guias"]:
         cab += ["Guias de entrada", "Guias de saída", "Equipamentos"]
         pesos += [1, 1, 1]
         tot += [t["entrada"], t["saida"], t["itens"]]
-    if r["tipo"] != "guias":
+    if r["com_etq"]:
         cab.append("Etiquetas")
         pesos.append(1)
         tot.append(t["etiquetas"])
-    dias = [[d["dia"]] + ([d["entrada"], d["saida"], d["itens"]] if r["tipo"] != "etiquetas" else [])
-            + ([d["etiquetas"]] if r["tipo"] != "guias" else []) for d in r["tabela"]]
-    h += [Paragraph("Movimentação por dia", S_SEC), _tabela(cab, dias, pesos, tot if dias else None)]
+    dias = [[d["dia"]] + ([d["entrada"], d["saida"], d["itens"]] if r["com_guias"] else [])
+            + ([d["etiquetas"]] if r["com_etq"] else []) for d in r["tabela"]]
+    h += [Paragraph("Movimentação por " + r["grupo"].lower(), S_SEC), _tabela(cab, dias, pesos, tot if dias else None)]
 
-    if r["tipo"] != "etiquetas" and r["guias"]:
+    if r["com_guias"] and r["guias"]:
         dados = [[g.id, _local(g.criado_em), _tipo(g), _situacao(g) or "—", g.chamado or "—",
                   f"{g.remetente} → {g.destinatario}", len(g.itens), _operador(g)] for g in r["guias"]]
-        h += [Paragraph("Guias do mês", S_SEC),
+        h += [Paragraph("Guias do período", S_SEC),
               _tabela(["Nº", "Data", "Tipo", "Situação", "Chamado", "Remetente » Destinatário", "Itens", "Operador"],
                       dados, [.55, 1.75, 1.2, 1.05, 1.15, 2.8, .65, 1.75])]
-    if r["tipo"] != "guias" and r["etiquetas"]:
+    if r["com_etq"] and r["etiquetas"]:
         dados = [[_local(e.criado_em), e.foto.hostname or "", e.foto.ip or "", e.foto.patrimonio or "",
                   e.foto.serial or "", e.foto.localidade or "", _operador(e)] for e in r["etiquetas"]]
-        h += [Paragraph("Etiquetas do mês", S_SEC),
+        h += [Paragraph("Etiquetas do período", S_SEC),
               _tabela(["Data", "Hostname", "IP", "Patrimônio", "Nº série", "Localidade", "Operador"],
                       dados, [1.45, 1.15, 1.45, 1, 1.5, 1.95, 1.6])]
     h.append(_assinaturas(usuario))

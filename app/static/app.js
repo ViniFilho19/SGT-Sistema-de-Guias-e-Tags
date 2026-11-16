@@ -50,3 +50,18 @@ document.addEventListener("click", function (e) {
   var escuro = document.documentElement.classList.toggle("dark");
   try { localStorage.setItem("tema", escuro ? "escuro" : "claro"); } catch (err) {}
 });
+// Relatórios: mostra só os campos do período escolhido (mês, semestre, ano ou datas)
+(function () {
+  var form = document.querySelector("form[data-periodos]");
+  if (!form) return;
+  var sel = form.querySelector("[name=periodo]");
+  function aplicar() {
+    form.querySelectorAll("[data-periodo]").forEach(function (l) {
+      var ativo = l.getAttribute("data-periodo") === sel.value;
+      l.hidden = !ativo;
+      l.querySelectorAll("input,select").forEach(function (c) { c.disabled = !ativo; });
+    });
+  }
+  sel.addEventListener("change", aplicar);
+  aplicar();
+})();

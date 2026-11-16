@@ -2,7 +2,8 @@
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from urllib.parse import urlencode
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -424,7 +425,10 @@ def usuario_senha(id_: int, senha: str = Form(""), db: Session = Depends(get_db)
 # ---------- relatórios ----------
 MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro",
          "outubro", "novembro", "dezembro"]
-TIPOS_REL = [("todos", "Guias e etiquetas"), ("guias", "Guias"), ("etiquetas", "Etiquetas")]
+TIPOS_REL = [("todos", "Guias e etiquetas"), ("guias", "Todas as guias"),
+             ("prontas", "Guias de saída prontas (aguardando entrega)"),
+             ("enviadas", "Guias de saída enviadas (entregues)"), ("etiquetas", "Etiquetas")]
+PERIODOS = [("mes", "Mês"), ("semestre", "Semestre"), ("ano", "Ano"), ("personalizado", "Período personalizado (datas)")]
 
 
 def _local(dt):
@@ -508,14 +512,25 @@ def _historico_patrimonio(db: Session, termo: str) -> dict:
 
 
 @router.get("/relatorios")
-def relatorios(request: Request, mes: str = "", tipo: str = "todos", patrimonio: str = "",
+def relatorios(request: Request, mes: str = "", tipo: str = "todos", patrimonio: str = "", periodo: str = "mes",
+               semestre: str = "", ano: str = "", de: str = "", ate: str = "",
                db: Session = Depends(get_db), user: User = Depends(usuario_web)):
     emitido = datetime.now(FUSO).strftime("%d/%m/%Y às %H:%M")
     if patrimonio.strip():
-        return pagina(request, "relatorios.html", user, hist=_historico_patrimonio(db, patrimonio),
-                      mes=mes or datetime.now(FUSO).strftime("%Y-%m"), tipo=tipo, opcoes=TIPOS_REL,
-                      patrimonio=patrimonio.strip(), emitido=emitido)
-    return pagina(request, "relatorios.html", user, opcoes=TIPOS_REL, emitido=emitido, **_relatorio_mes(db, mes, tipo))
+        return pagina(request, "relatorios.html", user, hist=_historico_patrimonio(db, patrimonio), tipo=tipo,
+                      opcoes=TIPOS_REL, periodos=PERIODOS, semestres=_semestres(), anos=_anos(),
+                      patrimonio=patrimonio.strip(), emitido=emitido, **_periodo(periodo, mes, semestre, ano, de, ate))
+    return pagina(request, "relatorios.html", user, opcoes=TIPOS_REL, periodos=PERIODOS, emitido=emitido,
+                  semestres=_semestres(), anos=_anos(), **_relatorio_mes(db, mes, tipo, periodo, semestre, ano, de, ate))
+
+
+def _anos() -> list[str]:
+    a = datetime.now(FUSO).year
+    return [str(x) for x in range(a, a - 6, -1)]
+
+
+def _semestres() -> list[tuple[str, str]]:
+    return [(f"{a}-{s}", f"{s}º semestre de {a}") for a in _anos() for s in (2, 1)]
 
 
 FORMATOS = {"planilha": ("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -524,7 +539,8 @@ FORMATOS = {"planilha": ("xlsx", "application/vnd.openxmlformats-officedocument.
 
 
 @router.get("/relatorios/{formato}")
-def relatorios_arquivo(formato: str, mes: str = "", tipo: str = "todos", patrimonio: str = "",
+def relatorios_arquivo(formato: str, mes: str = "", tipo: str = "todos", patrimonio: str = "", periodo: str = "mes",
+                       semestre: str = "", ano: str = "", de: str = "", ate: str = "",
                        db: Session = Depends(get_db), user: User = Depends(usuario_web)):
     """Mesmo conteúdo do relatório na tela, para baixar em planilha Excel (.xlsx) ou PDF."""
     if formato not in FORMATOS:
@@ -535,35 +551,82 @@ def relatorios_arquivo(formato: str, mes: str = "", tipo: str = "todos", patrimo
         conteudo = gerar_pat(h, user.nome)
         nome = f"movimentacoes-maquina-{re.sub(r'[^0-9A-Za-z]', '', h['busca'])[:30] or 'busca'}.{ext}"
     else:
-        r = _relatorio_mes(db, mes, tipo)
+        r = _relatorio_mes(db, mes, tipo, periodo, semestre, ano, de, ate)
         conteudo = gerar_mes(r, user.nome)
-        nome = f"relatorio-sgt-{r['mes']}-{r['tipo']}.{ext}"
+        nome = f"relatorio-sgt-{r['nome_arquivo']}.{ext}"
     return Response(conteudo, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{nome}"'})
 
 
-def _relatorio_mes(db: Session, mes: str, tipo: str) -> dict:
-    ano, m = _parse_mes(mes, datetime.now(FUSO))
+def _data(txt: str):
+    try:
+        return datetime.strptime(txt, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _periodo(periodo: str, mes: str, semestre: str, ano: str, de: str, ate: str) -> dict:
+    """Intervalo [ini, fim) em datas locais + título, a partir do tipo de período escolhido."""
+    hoje = datetime.now(FUSO).date()
+    periodo = periodo if periodo in dict(PERIODOS) else "mes"
+    if periodo == "semestre":
+        try:
+            a, sm = (int(x) for x in semestre.split("-"))
+            assert 2000 <= a <= 2100 and sm in (1, 2)
+        except (ValueError, AssertionError):
+            a, sm = hoje.year, 1 if hoje.month <= 6 else 2
+        ini, fim = date(a, 1 if sm == 1 else 7, 1), (date(a, 7, 1) if sm == 1 else date(a + 1, 1, 1))
+        titulo, semestre = f"{sm}º semestre de {a}", f"{a}-{sm}"
+    elif periodo == "ano":
+        a = int(ano) if ano.isdigit() and 2000 <= int(ano) <= 2100 else hoje.year
+        ini, fim, titulo, ano = date(a, 1, 1), date(a + 1, 1, 1), f"ano de {a}", str(a)
+    elif periodo == "personalizado":
+        d1, d2 = _data(de) or hoje.replace(day=1), _data(ate) or hoje
+        d1, d2 = min(d1, d2), max(d1, d2)
+        d1 = max(d1, d2 - timedelta(days=366 * 3))  # no máximo 3 anos
+        ini, fim = d1, d2 + timedelta(days=1)
+        titulo, de, ate = f"{d1:%d/%m/%Y} a {d2:%d/%m/%Y}", d1.isoformat(), d2.isoformat()
+    else:
+        a, m = _parse_mes(mes, hoje)
+        ini, fim = date(a, m, 1), date(a + (m == 12), m % 12 + 1, 1)
+        titulo, mes = f"{MESES[m - 1]} de {a}", f"{a}-{m:02d}"
+    return {"periodo": periodo, "ini": ini, "fim": fim, "titulo": titulo, "mes": mes or f"{hoje:%Y-%m}",
+            "semestre": semestre or f"{hoje.year}-{1 if hoje.month <= 6 else 2}", "ano": ano or str(hoje.year),
+            "de": de or hoje.replace(day=1).isoformat(), "ate": ate or hoje.isoformat()}
+
+
+def _relatorio_mes(db: Session, mes: str = "", tipo: str = "todos", periodo: str = "mes", semestre: str = "",
+                   ano: str = "", de: str = "", ate: str = "") -> dict:
     if tipo not in dict(TIPOS_REL):
         tipo = "todos"
-    # limites do mês no fuso local, convertidos para UTC (como o banco guarda)
-    ini = datetime(ano, m, 1, tzinfo=FUSO).astimezone(timezone.utc)
-    fim = datetime(ano + (m == 12), m % 12 + 1, 1, tzinfo=FUSO).astimezone(timezone.utc)
+    p = _periodo(periodo, mes, semestre, ano, de, ate)
+    # limites no fuso local, convertidos para UTC (como o banco guarda)
+    ini = datetime(p["ini"].year, p["ini"].month, p["ini"].day, tzinfo=FUSO).astimezone(timezone.utc)
+    fim = datetime(p["fim"].year, p["fim"].month, p["fim"].day, tzinfo=FUSO).astimezone(timezone.utc)
+    por_mes = (p["fim"] - p["ini"]).days > 62  # períodos longos: agrupa por mês
+    com_guias, com_etq = tipo != "etiquetas", tipo in ("todos", "etiquetas")
 
-    dias: dict = {}
+    grupos: dict = {}
 
     def linha(dt):
-        return dias.setdefault(_local(dt).date(), {"entrada": 0, "saida": 0, "itens": 0, "etiquetas": 0})
+        d = _local(dt).date()
+        return grupos.setdefault((d.year, d.month) if por_mes else d,
+                                 {"entrada": 0, "saida": 0, "itens": 0, "etiquetas": 0})
 
     guias, etqs = [], []
-    if tipo in ("todos", "guias"):
-        guias = db.scalars(select(Guia).options(selectinload(Guia.itens), selectinload(Guia.operador))
-                           .where(Guia.criado_em >= ini, Guia.criado_em < fim).order_by(Guia.criado_em)).all()
+    if com_guias:
+        q = (select(Guia).options(selectinload(Guia.itens), selectinload(Guia.operador))
+             .where(Guia.criado_em >= ini, Guia.criado_em < fim).order_by(Guia.criado_em))
+        if tipo == "prontas":
+            q = q.where(E_SAIDA, PRONTA)
+        elif tipo == "enviadas":
+            q = q.where(E_SAIDA, Guia.status == "entregue")
+        guias = db.scalars(q).all()
         for g in guias:
             l = linha(g.criado_em)
             l["entrada" if "ENTRADA" in g.tipo else "saida"] += 1
             l["itens"] += len(g.itens)
             g.data = hora_local(g.criado_em)
-    if tipo in ("todos", "etiquetas"):  # inclui as removidas da lista de recentes (histórico completo)
+    if com_etq:  # inclui as removidas da lista de recentes (histórico completo)
         etqs = db.scalars(select(Etiqueta).options(selectinload(Etiqueta.equipamento), selectinload(Etiqueta.operador))
                           .where(Etiqueta.criado_em >= ini, Etiqueta.criado_em < fim)
                           .order_by(Etiqueta.criado_em)).all()
@@ -571,11 +634,18 @@ def _relatorio_mes(db: Session, mes: str, tipo: str) -> dict:
             linha(e.criado_em)["etiquetas"] += 1
             e.data = hora_local(e.criado_em)
 
-    tot = {k: sum(l[k] for l in dias.values()) for k in ("entrada", "saida", "itens", "etiquetas")}
+    tot = {k: sum(l[k] for l in grupos.values()) for k in ("entrada", "saida", "itens", "etiquetas")}
     tot["guias"] = tot["entrada"] + tot["saida"]
-    tabela = [{"dia": d.strftime("%d/%m/%Y"), **l} for d, l in sorted(dias.items())]
-    return {"mes": f"{ano}-{m:02d}", "tipo": tipo, "tipo_txt": dict(TIPOS_REL)[tipo],
-            "titulo": f"{MESES[m - 1]} de {ano}", "tot": tot, "tabela": tabela, "guias": guias, "etiquetas": etqs}
+    if por_mes:
+        tabela = [{"dia": f"{MESES[m - 1].capitalize()}/{a}", **l} for (a, m), l in sorted(grupos.items())]
+    else:
+        tabela = [{"dia": d.strftime("%d/%m/%Y"), **l} for d, l in sorted(grupos.items())]
+    campos = {"periodo": p["periodo"], "tipo": tipo, "mes": p["mes"], "semestre": p["semestre"], "ano": p["ano"],
+              "de": p["de"], "ate": p["ate"]}
+    ultimo = p["fim"] - timedelta(days=1)
+    return {**p, "tipo": tipo, "tipo_txt": dict(TIPOS_REL)[tipo], "tot": tot, "tabela": tabela, "guias": guias,
+            "etiquetas": etqs, "com_guias": com_guias, "com_etq": com_etq, "grupo": "Mês" if por_mes else "Dia",
+            "qs": urlencode(campos), "nome_arquivo": f"{p['ini']:%Y-%m-%d}_a_{ultimo:%Y-%m-%d}-{tipo}"}
 
 
 # ---------- equipamentos ----------
