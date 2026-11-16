@@ -14,8 +14,8 @@
 {% macro operador(o) %}{% if o.operador_original %}{{ o.operador_original }} <span class="badge b-gray ml-1 print:hidden">planilha</span>{% else %}{{ o.operador.nome }}{% endif %}{% endmacro %}
 {% block content %}
 {% if hist %}
-  {% set rel_titulo = "Histórico do patrimônio " ~ hist.busca %}
-  {% set rel_sub = "Guias de entrada e saída e etiquetas do equipamento (histórico completo)" %}
+  {% set rel_titulo = "Movimentações da máquina " ~ hist.busca %}
+  {% set rel_sub = "Dados do equipamento e todas as guias de entrada e saída (histórico completo)" %}
   {% set q_planilha = "patrimonio=" ~ hist.busca|urlencode %}
 {% else %}
   {% set rel_titulo = "Relatório de movimentação – " ~ titulo %}
@@ -48,8 +48,8 @@
     <button class="btn">Gerar relatório</button>
   </form>
   <form class="card flex flex-wrap items-end gap-4 p-5" method="get" action="/relatorios">
-    <label class="min-w-0 flex-1">Histórico por patrimônio<input name="patrimonio" value="{{ patrimonio or '' }}" required
-      maxlength="100" autocomplete="off" placeholder="Ex.: 039252"></label>
+    <label class="min-w-0 flex-1">Movimentações da máquina<input name="patrimonio" value="{{ patrimonio or '' }}" required
+      maxlength="100" autocomplete="off" placeholder="Patrimônio ou nº de série. Ex.: 039252 ou 1AG43CN4W"></label>
     <button class="btn">{{ icone("buscar", "size-4") }}Pesquisar</button>
   </form>
 </div>
@@ -57,37 +57,81 @@
 {% if hist %}
   {% set eq = hist.eq %}
   {% if eq %}
-  <div class="card mb-6 flex flex-wrap gap-x-8 gap-y-2 p-5 text-sm print:hidden">
-    <span><span class="text-slate-500">Hostname</span> <b class="text-slate-900">{{ eq.hostname or "—" }}</b></span>
-    <span><span class="text-slate-500">Modelo</span> <b class="text-slate-900">{{ eq.modelo or "—" }}</b></span>
-    <span><span class="text-slate-500">Nº série</span> <b class="text-slate-900">{{ eq.serial or "—" }}</b></span>
-    <span><span class="text-slate-500">IP</span> <b class="font-mono text-slate-900">{{ eq.ip or "—" }}</b></span>
-    <span><span class="text-slate-500">Localidade</span> <b class="text-slate-900">{{ eq.localidade or "—" }}</b></span>
+  <div class="card mb-6 p-5 print:hidden">
+    <p class="text-xs font-semibold tracking-wide text-slate-500 uppercase">Equipamento{% if hist.achado_por == "nº de série" %} · encontrado pelo nº de série{% endif %}</p>
+    <div class="mt-2 flex flex-wrap gap-x-8 gap-y-2 text-sm">
+      <span><span class="text-slate-500">Patrimônio</span> <b class="text-slate-900">{{ eq.patrimonio or "—" }}</b></span>
+      <span><span class="text-slate-500">Nº série</span> <b class="text-slate-900">{{ eq.serial or "—" }}</b></span>
+      <span><span class="text-slate-500">Hostname</span> <b class="text-slate-900">{{ eq.hostname or "—" }}</b></span>
+      <span><span class="text-slate-500">Modelo</span> <b class="text-slate-900">{{ eq.modelo or "—" }}</b></span>
+      <span><span class="text-slate-500">IP</span> <b class="font-mono text-slate-900">{{ eq.ip or "—" }}</b></span>
+      <span><span class="text-slate-500">Localidade no cadastro</span> <b class="text-slate-900">{{ eq.localidade or "—" }}</b></span>
+    </div>
   </div>
   {% elif not hist.movs %}
-  <div class="card mb-6 p-5 text-sm text-slate-600">Nenhum equipamento cadastrado e nenhuma guia com o patrimônio <b>{{ hist.busca }}</b>.</div>
+  <div class="card mb-6 p-5 text-sm text-slate-600">Nenhum equipamento cadastrado e nenhuma guia com o patrimônio ou nº de série <b>{{ hist.busca }}</b>.</div>
+  {% endif %}
+
+  {% if hist.atual %}
+  <div class="card mb-6 flex flex-wrap items-center gap-4 p-5 print:hidden {{ 'border-amber-300 bg-amber-50' if hist.divergente }}">
+    <span class="grid size-12 place-items-center rounded-xl bg-brand-50 text-brand-700">{{ icone("equipamento", "size-6") }}</span>
+    <div class="min-w-0 flex-1">
+      <p class="text-sm text-slate-500">Onde está agora (pela última guia, em {{ hist.atual_desde }})</p>
+      <p class="text-xl font-bold text-slate-900">{{ hist.atual }}</p>
+      {% if hist.divergente %}<p class="mt-1 flex items-center gap-1.5 text-sm font-medium text-amber-800">{{ icone("alerta", "size-4") }}
+        Diferente do cadastro/inventário, que diz “{{ eq.localidade }}”. Pode ter havido movimentação sem guia.</p>{% endif %}
+    </div>
+  </div>
   {% endif %}
 
   <h2 class="section-title mb-3 hidden print:block">Dados do equipamento</h2>
-  {{ resumo([("Patrimônio", hist.busca), ("Hostname", eq.hostname or "—" if eq else "—"), ("Modelo", eq.modelo or "—" if eq else "—"),
-             ("Nº série", eq.serial or "—" if eq else "—"), ("IP", eq.ip or "—" if eq else "—"), ("Localidade", eq.localidade or "—" if eq else "—"),
-             ("Guias de saída", hist.saidas), ("Guias de entrada", hist.entradas), ("Etiquetas geradas", hist.etiquetas|length)]) }}
+  {{ resumo([("Patrimônio", (eq.patrimonio or "—") if eq else hist.busca), ("Nº série", (eq.serial or "—") if eq else "—"),
+             ("Hostname", (eq.hostname or "—") if eq else "—"), ("Modelo", (eq.modelo or "—") if eq else "—"),
+             ("IP", (eq.ip or "—") if eq else "—"), ("Localidade no cadastro", (eq.localidade or "—") if eq else "—"),
+             ("Onde está agora (última guia)", hist.atual or "—"), ("Movimentações", hist.movs|length ~ " (" ~ hist.saidas ~ " saídas, " ~ hist.entradas ~ " entradas)")]) }}
+  {% if hist.divergente %}<p class="hidden text-xs print:block">Atenção: o destino da última guia difere da localidade do cadastro/inventário.</p>{% endif %}
 
   <div class="rel-cards grid gap-4 sm:grid-cols-3">
-    {{ stat("Guias de saída", hist.saidas, "seta", "bg-amber-50 text-amber-700") }}
-    {{ stat("Guias de entrada", hist.entradas, "voltar", "bg-emerald-50 text-emerald-700") }}
+    {{ stat("Saídas", hist.saidas, "seta", "bg-amber-50 text-amber-700") }}
+    {{ stat("Entradas", hist.entradas, "voltar", "bg-emerald-50 text-emerald-700") }}
     {{ stat("Etiquetas geradas", hist.etiquetas|length, "etiqueta") }}
   </div>
 
-  <h2 class="section-title mt-10 mb-3">Guias com este patrimônio</h2>
-  <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
-    <thead><tr><th>Nº</th><th>Data</th><th>Tipo</th><th>Situação</th><th>Chamado</th><th>Remetente → Destinatário</th><th>Hostname na guia</th><th>Operador</th><th class="print:hidden"></th></tr></thead>
-    <tbody>{% for i in hist.movs %}{% set g = i.guia %}<tr><td class="font-semibold text-slate-900">{{ g.id }}</td><td class="whitespace-nowrap">{{ i.data }}</td>
-      <td>{{ gu.tipo(g) }}</td><td>{{ gu.situacao(g) }}</td>
-      <td>{{ g.chamado or "—" }}</td><td>{{ g.remetente }} <span class="text-slate-400">→</span> {{ g.destinatario }}</td>
-      <td>{{ i.hostname or "—" }}</td><td>{{ operador(g) }}</td>
-      <td class="text-right print:hidden"><a class="btn btn-ghost btn-sm" href="/guias/{{ g.id }}">Abrir</a></td></tr>
-    {% else %}<tr><td colspan="9" class="py-10 text-center text-slate-500">Nenhuma guia com este patrimônio.</td></tr>{% endfor %}</tbody>
+  <h2 class="section-title mt-10 mb-3">Movimentações</h2>
+  {# linha do tempo (tela) #}
+  <ol class="relative ml-3 border-l-2 border-slate-200 print:hidden">
+    {% for i in hist.movs %}{% set g = i.guia %}{% set saida = 'SAÍDA' in g.tipo %}
+    <li class="relative mb-5 ml-6">
+      <span class="absolute -left-[35px] grid size-8 place-items-center rounded-full ring-4 ring-[var(--color-slate-50)] {{ 'bg-amber-100 text-amber-700' if saida else 'bg-emerald-100 text-emerald-700' }}">
+        {{ icone("seta" if saida else "voltar", "size-4") }}</span>
+      <div class="card p-4">
+        <div class="flex flex-wrap items-center gap-2 text-sm">
+          <b class="text-slate-900">{{ i.data }}</b>{{ gu.tipo(g) }}{{ gu.situacao(g) if saida }}
+          {% if loop.first %}<span class="badge b-blue">Mais recente</span>{% endif %}
+          <a class="btn btn-ghost btn-sm ml-auto" href="/guias/{{ g.id }}">Guia nº {{ g.id }}</a>
+        </div>
+        <p class="mt-2 text-base font-semibold text-slate-900">{{ g.remetente }} <span class="text-slate-400">→</span> {{ g.destinatario }}</p>
+        <div class="mt-2 grid gap-x-6 gap-y-1 text-sm text-slate-600 sm:grid-cols-2 lg:grid-cols-3">
+          <span>Chamado: <b class="text-slate-800">{{ g.chamado or "—" }}</b></span>
+          <span>Hostname / IP na guia: <b class="text-slate-800">{{ i.hostname or "—" }}{% if i.ip %} · {{ i.ip }}{% endif %}</b></span>
+          <span>Emitida por: <b class="text-slate-800">{{ operador(g) }}</b></span>
+          {% if saida and g.status == "entregue" %}
+          <span>Entregue por: <b class="text-slate-800">{{ g.entregue_por or "—" }}</b></span>
+          <span>Retirado por: <b class="text-slate-800">{{ g.retirado_por or "—" }}</b></span>
+          {% if i.entregue_txt %}<span>Entregue em: <b class="text-slate-800">{{ i.entregue_txt }}</b></span>{% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </li>
+    {% else %}<li class="ml-6 py-6 text-sm text-slate-500">Nenhuma guia com esta máquina.</li>{% endfor %}
+  </ol>
+  {# tabela (impressão) #}
+  <div class="card hidden overflow-hidden p-0 print:block"><div class="overflow-x-auto"><table class="tabela">
+    <thead><tr><th>Data</th><th>Nº</th><th>Tipo</th><th>De → Para</th><th>Chamado</th><th>Hostname</th><th>Entregue por</th><th>Retirado por</th></tr></thead>
+    <tbody>{% for i in hist.movs %}{% set g = i.guia %}<tr><td class="whitespace-nowrap">{{ i.data }}</td><td>{{ g.id }}</td>
+      <td>{{ gu.tipo(g) }}</td><td>{{ g.remetente }} → {{ g.destinatario }}</td><td>{{ g.chamado or "—" }}</td>
+      <td>{{ i.hostname or "—" }}</td><td>{{ g.entregue_por or "—" }}</td><td>{{ g.retirado_por or "—" }}</td></tr>
+    {% else %}<tr><td colspan="8">Nenhuma guia com esta máquina.</td></tr>{% endfor %}</tbody>
   </table></div></div>
 
   {% if hist.etiquetas %}

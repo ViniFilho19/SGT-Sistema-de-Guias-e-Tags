@@ -185,21 +185,32 @@ def pdf_mes(r: dict, usuario: str) -> bytes:
     return _gerar(h, titulo)
 
 
-def pdf_patrimonio(hist: dict, usuario: str) -> bytes:
-    titulo = f"Histórico do patrimônio {hist['busca']}"
-    h = _cabecalho(titulo, "Guias de entrada e saída e etiquetas do equipamento (histórico completo)", usuario)
+def _pares_maquina(hist: dict) -> list[tuple]:
     eq = hist["eq"]
     v = (lambda a: (getattr(eq, a) or "—") if eq else "—")
-    h += [Paragraph("Dados do equipamento", S_SEC),
-          _resumo([("Patrimônio", hist["busca"]), ("Hostname", v("hostname")), ("Modelo", v("modelo")),
-                   ("Nº série", v("serial")), ("IP", v("ip")), ("Localidade", v("localidade")),
-                   ("Guias de saída", hist["saidas"]), ("Guias de entrada", hist["entradas"]),
-                   ("Etiquetas geradas", len(hist["etiquetas"]))])]
-    dados = [[i.guia.id, _local(i.guia.criado_em), _tipo(i.guia), _situacao(i.guia) or "—", i.guia.chamado or "—",
-              f"{i.guia.remetente} → {i.guia.destinatario}", i.hostname or "—", _operador(i.guia)] for i in hist["movs"]]
-    h += [Paragraph("Guias com este patrimônio", S_SEC),
-          _tabela(["Nº", "Data", "Tipo", "Situação", "Chamado", "Remetente » Destinatário", "Hostname na guia",
-                   "Operador"], dados, [.55, 1.75, 1.2, 1.05, 1.15, 2.6, 1.25, 1.85])]
+    return [("Patrimônio", v("patrimonio") if eq else hist["busca"]), ("Nº série", v("serial")),
+            ("Hostname", v("hostname")), ("Modelo", v("modelo")), ("IP", v("ip")),
+            ("Localidade no cadastro", v("localidade")), ("Onde está agora (última guia)", hist["atual"] or "—"),
+            ("Movimentações", f"{len(hist['movs'])} ({hist['saidas']} saídas, {hist['entradas']} entradas)")]
+
+
+def _linhas_movs(hist: dict) -> list[list]:
+    return [[i.data, i.guia.id, _tipo(i.guia), f"{i.guia.remetente} → {i.guia.destinatario}", i.guia.chamado or "—",
+             i.hostname or "—", i.guia.entregue_por or "—", i.guia.retirado_por or "—"] for i in hist["movs"]]
+
+
+CAB_MOVS = ["Data", "Nº", "Tipo", "De » Para", "Chamado", "Hostname", "Entregue por", "Retirado por"]
+
+
+def pdf_patrimonio(hist: dict, usuario: str) -> bytes:
+    titulo = f"Movimentações da máquina {hist['busca']}"
+    h = _cabecalho(titulo, "Dados do equipamento e todas as guias de entrada e saída (histórico completo)", usuario)
+    h += [Paragraph("Dados do equipamento", S_SEC), _resumo(_pares_maquina(hist))]
+    if hist["divergente"]:
+        h.append(_p("Atenção: o destino da última guia difere da localidade do cadastro/inventário "
+                    "(pode ter havido movimentação sem guia).", S_SUB))
+    h += [Paragraph("Movimentações (da mais recente para a mais antiga)", S_SEC),
+          _tabela(CAB_MOVS, _linhas_movs(hist), [1.6, .55, 1.25, 3, 1.1, 1.15, 1.3, 1.3])]
     if hist["etiquetas"]:
         dados = [[_local(e.criado_em), e.foto.hostname or "", e.foto.ip or "", e.foto.localidade or "", _operador(e)]
                  for e in hist["etiquetas"]]

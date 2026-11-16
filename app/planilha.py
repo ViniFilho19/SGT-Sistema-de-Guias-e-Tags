@@ -156,23 +156,16 @@ def planilha_mes(r: dict, usuario: str) -> bytes:
 
 
 def planilha_patrimonio(h: dict, usuario: str) -> bytes:
+    from .pdf import CAB_MOVS, _linhas_movs, _pares_maquina
     wb = Workbook()
-    titulo = f"Histórico do patrimônio {h['busca']}"
-    eq = h["eq"]
-    sub = (f"{eq.hostname or 'sem hostname'} · {eq.modelo or 'modelo não informado'} · {eq.localidade or 'sem localidade'}"
-           if eq else "Equipamento não encontrado no cadastro")
-    dados = [["Patrimônio", h["busca"]]]
-    if eq:
-        dados += [["Hostname", eq.hostname or ""], ["Modelo", eq.modelo or ""], ["Nº série", eq.serial or ""],
-                  ["IP", eq.ip or ""], ["Localidade", eq.localidade or ""]]
-    dados += [["Guias de saída", h["saidas"]], ["Guias de entrada", h["entradas"]],
-              ["Etiquetas geradas", len(h["etiquetas"])]]
-    _aba(wb, "Equipamento", titulo, sub, usuario, ["Informação", "Valor"], dados, [24, 40], primeira=True)
-    movs = [[i.guia.id, _local(i.guia.criado_em), _tipo(i.guia), _situacao(i.guia), i.guia.chamado or "",
-             i.guia.remetente or "", i.guia.destinatario or "", i.hostname or "", i.guia.retirado_por or "",
-             _operador(i.guia)] for i in h["movs"]]
-    _aba(wb, "Guias", titulo, sub, usuario,
-         ["Nº", "Data", "Tipo", "Situação", "Chamado", "Remetente", "Destinatário", "Hostname na guia",
-          "Retirado por", "Operador"], movs, [7, 17, 24, 18, 14, 30, 30, 18, 24, 24])
+    titulo = f"Movimentações da máquina {h['busca']}"
+    sub = "Dados do equipamento e todas as guias de entrada e saída (histórico completo)"
+    dados = [list(par) for par in _pares_maquina(h)]
+    if h["divergente"]:
+        dados.append(["Atenção", "Destino da última guia difere da localidade do cadastro/inventário"])
+    _aba(wb, "Equipamento", titulo, sub, usuario, ["Informação", "Valor"], dados, [30, 50], primeira=True)
+    movs = [[str(c).replace("→", "->") if j == 3 else c for j, c in enumerate(r)] for r in _linhas_movs(h)]
+    _aba(wb, "Movimentações", titulo, sub, usuario, [c.replace("»", "->") for c in CAB_MOVS], movs,
+         [17, 7, 24, 50, 14, 16, 24, 24])
     _aba(wb, "Etiquetas", titulo, sub, usuario, CAB_ETQ, _linhas_etiquetas(h["etiquetas"]), LARG_ETQ)
     return _salvar(wb)

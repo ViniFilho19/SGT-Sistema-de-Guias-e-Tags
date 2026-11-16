@@ -444,19 +444,55 @@ def _parse_mes(txt, hoje):
     return hoje.year, hoje.month
 
 
-def _historico_patrimonio(db: Session, patrimonio: str) -> dict:
-    """Todas as guias (entrada e saída) e etiquetas de um patrimônio, da mais recente para a mais antiga."""
-    p = patrimonio.strip()[:100]
-    eq = equipamento_por_patrimonio(db, p)
-    chave = p.lstrip("0") or p
-    cond = or_(func.lower(GuiaItem.patrimonio) == p.lower(), func.ltrim(GuiaItem.patrimonio, "0") == chave)
+def _norm_serial(s: str | None) -> str:
+    return re.sub(r"[^0-9A-Z]", "", (s or "").upper())
+
+
+def _sql_serial(col):
+    """Nº de série sem espaços, hífens e barras, em maiúsculas (mesma regra de _norm_serial)."""
+    for ch in (" ", "-", "/", "."):
+        col = func.replace(col, ch, "")
+    return func.upper(col)
+
+
+def _tokens_local(txt: str | None) -> set[str]:
+    import unicodedata
+    t = unicodedata.normalize("NFKD", (txt or "").upper()).encode("ascii", "ignore").decode()
+    t = re.sub(r"\b\d+\s*[AO°º]?\b|[^A-Z ]", " ", t)  # tira "02ª", "6º", pontuação
+    return {w for w in t.split() if w not in {"DE", "DA", "DO", "DAS", "DOS", "E", "BA"}}
+
+
+def _mesmo_local(a: str | None, b: str | None) -> bool:
+    ta, tb = _tokens_local(a), _tokens_local(b)
+    sede = lambda t: "SEDE" in t or {"SERVICE", "DESK"} <= t  # o Service Desk fica na sede
+    return bool(ta and tb) and (ta <= tb or tb <= ta or (sede(ta) and sede(tb)))
+
+
+def _historico_patrimonio(db: Session, termo: str) -> dict:
+    """Movimentações (guias de entrada e saída) e etiquetas de uma máquina, buscada por patrimônio ou nº de série."""
+    p = termo.strip()[:100]
+    eq, achado_por = equipamento_por_patrimonio(db, p), "patrimônio"
+    ns = _norm_serial(p)
+    if not eq and len(ns) >= 5:
+        eq = db.scalars(select(Equipamento).where(_sql_serial(Equipamento.serial) == ns).order_by(Equipamento.id)).first()
+        achado_por = "nº de série" if eq else ""
+    pats = {x for x in (p, eq.patrimonio if eq else None) if x}
+    seriais = {x for x in (ns, _norm_serial(eq.serial) if eq else "") if len(x) >= 5}
+    conds = []
+    for x in pats:
+        conds += [func.lower(GuiaItem.patrimonio) == x.lower()]
+        if x.lstrip("0"):
+            conds.append(func.ltrim(GuiaItem.patrimonio, "0") == x.lstrip("0"))
+    conds += [_sql_serial(GuiaItem.serial) == s for s in seriais]
     if eq:
-        cond = or_(cond, GuiaItem.equipamento_id == eq.id)
+        conds.append(GuiaItem.equipamento_id == eq.id)
+    cond = or_(*conds)
     itens = db.scalars(select(GuiaItem).options(selectinload(GuiaItem.guia).selectinload(Guia.operador))
                        .where(cond)).all()
     movs = sorted({i.guia_id: i for i in itens}.values(), key=lambda i: i.guia.criado_em, reverse=True)
     for i in movs:
         i.data = hora_local(i.guia.criado_em)
+        i.entregue_txt = hora_local(i.guia.entregue_em) if i.guia.entregue_em else ""
     etqs = []
     if eq:
         etqs = db.scalars(select(Etiqueta).options(selectinload(Etiqueta.operador))
@@ -464,8 +500,11 @@ def _historico_patrimonio(db: Session, patrimonio: str) -> dict:
         for e in etqs:
             e.data = hora_local(e.criado_em)
     entradas = sum(1 for i in movs if "ENTRADA" in i.guia.tipo)
-    return {"busca": p, "eq": eq, "movs": movs, "etiquetas": etqs, "entradas": entradas,
-            "saidas": len(movs) - entradas}
+    atual = movs[0].guia.destinatario if movs else None  # destino da última guia
+    divergente = bool(atual and eq and eq.localidade and not _mesmo_local(atual, eq.localidade))
+    return {"busca": p, "eq": eq, "achado_por": achado_por, "movs": movs, "etiquetas": etqs, "entradas": entradas,
+            "saidas": len(movs) - entradas, "atual": atual, "atual_desde": movs[0].data if movs else "",
+            "divergente": divergente}
 
 
 @router.get("/relatorios")
@@ -494,7 +533,7 @@ def relatorios_arquivo(formato: str, mes: str = "", tipo: str = "todos", patrimo
     if patrimonio.strip():
         h = _historico_patrimonio(db, patrimonio)
         conteudo = gerar_pat(h, user.nome)
-        nome = f"historico-patrimonio-{re.sub(r'[^0-9A-Za-z]', '', h['busca'])[:30] or 'busca'}.{ext}"
+        nome = f"movimentacoes-maquina-{re.sub(r'[^0-9A-Za-z]', '', h['busca'])[:30] or 'busca'}.{ext}"
     else:
         r = _relatorio_mes(db, mes, tipo)
         conteudo = gerar_mes(r, user.nome)
