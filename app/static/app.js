@@ -64,4 +64,12 @@ document.addEventListener("click", function (e) {
   }
   sel.addEventListener("change", aplicar);
   aplicar();
+  // "Status da entrega" só vale para guias de saída: some quando o tipo é entrada ou etiquetas
+  var tipo = form.querySelector("[name=tipo]"), st = form.querySelector("[data-status]");
+  function status() {
+    var usa = ["entrada", "etiquetas"].indexOf(tipo.value) < 0;
+    st.hidden = !usa;
+    st.querySelector("select").disabled = !usa;
+  }
+  if (tipo && st) { tipo.addEventListener("change", status); status(); }
 })();

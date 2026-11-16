@@ -51,8 +51,10 @@
       {% for a in anos %}<option {{ "selected" if a == ano }}>{{ a }}</option>{% endfor %}</select></label>
     <label class="w-full sm:w-40" data-periodo="personalizado">De<input type="date" name="de" value="{{ de }}"></label>
     <label class="w-full sm:w-40" data-periodo="personalizado">Até<input type="date" name="ate" value="{{ ate }}"></label>
-    <label class="w-full sm:w-72">Tipo<select name="tipo">
+    <label class="w-full sm:w-64">Tipo<select name="tipo">
       {% for valor, texto in opcoes %}<option value="{{ valor }}" {{ "selected" if valor == tipo }}>{{ texto }}</option>{% endfor %}</select></label>
+    <label class="w-full sm:w-60" data-status title="Situação de entrega das guias de saída">Status da entrega<select name="status">
+      {% for valor, texto in status_opcoes %}<option value="{{ valor }}" {{ "selected" if valor == status_entrega }}>{{ texto }}</option>{% endfor %}</select></label>
     <button class="btn">Gerar relatório</button>
   </form>
   <form class="card flex flex-wrap items-end gap-4 p-5" method="get" action="/relatorios">
