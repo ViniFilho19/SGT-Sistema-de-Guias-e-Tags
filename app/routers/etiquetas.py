@@ -23,9 +23,12 @@ def texto_qr(eq: Equipamento) -> str:
 
 def gerar_etiqueta(db: Session, dados: EtiquetaCreate, user: User) -> Etiqueta:
     """Cria o equipamento (ou atualiza, se o patrimônio já existir) e registra o histórico."""
-    eq = db.scalar(select(Equipamento).where(Equipamento.patrimonio == dados.patrimonio))
+    from .guias import equipamento_por_patrimonio  # '35695' acha o cadastro '035695'
+    eq = equipamento_por_patrimonio(db, dados.patrimonio)
     if eq:
         for campo, valor in dados.model_dump().items():
+            if campo == "patrimonio" and eq.patrimonio:
+                continue  # mantém o formato já cadastrado
             setattr(eq, campo, valor)
     else:
         eq = Equipamento(tipo="Computador", **dados.model_dump())

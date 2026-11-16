@@ -667,7 +667,8 @@ def equipamento_buscar(patrimonio: str = "", db: Session = Depends(get_db), user
     if not eq:
         return {"encontrado": False}
     return {"encontrado": True, "tipo": eq.tipo, "modelo": eq.modelo or "", "serial": eq.serial or "",
-            "hostname": eq.hostname or "", "ip": eq.ip or "", "localidade": eq.localidade or ""}
+            "hostname": eq.hostname or "", "ip": eq.ip or "", "localidade": eq.localidade or "",
+            "mascara": eq.mascara or "", "gateway": eq.gateway or "", "patrimonio": eq.patrimonio or ""}
 
 
 @router.get("/equipamentos")
