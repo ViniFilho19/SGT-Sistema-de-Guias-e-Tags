@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, selectinload
 from .config import settings
 from .database import get_db
 from .models import Equipamento, Etiqueta, Guia, GuiaItem, User
+from .pdf import pdf_mes, pdf_patrimonio
 from .planilha import planilha_mes, planilha_patrimonio
 from .routers.etiquetas import gerar_etiqueta, qr_data_uri, texto_qr
 from .routers.guias import criar as criar_guia, equipamento_por_patrimonio
@@ -478,20 +479,27 @@ def relatorios(request: Request, mes: str = "", tipo: str = "todos", patrimonio:
     return pagina(request, "relatorios.html", user, opcoes=TIPOS_REL, emitido=emitido, **_relatorio_mes(db, mes, tipo))
 
 
-@router.get("/relatorios/planilha")
-def relatorios_planilha(mes: str = "", tipo: str = "todos", patrimonio: str = "",
-                        db: Session = Depends(get_db), user: User = Depends(usuario_web)):
-    """Mesmo conteúdo do relatório na tela, em planilha Excel (.xlsx)."""
+FORMATOS = {"planilha": ("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                          planilha_mes, planilha_patrimonio),
+            "pdf": ("pdf", "application/pdf", pdf_mes, pdf_patrimonio)}
+
+
+@router.get("/relatorios/{formato}")
+def relatorios_arquivo(formato: str, mes: str = "", tipo: str = "todos", patrimonio: str = "",
+                       db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    """Mesmo conteúdo do relatório na tela, para baixar em planilha Excel (.xlsx) ou PDF."""
+    if formato not in FORMATOS:
+        raise HTTPException(404, "Formato não disponível")
+    ext, mime, gerar_mes, gerar_pat = FORMATOS[formato]
     if patrimonio.strip():
         h = _historico_patrimonio(db, patrimonio)
-        conteudo = planilha_patrimonio(h, user.nome)
-        nome = f"historico-patrimonio-{re.sub(r'[^0-9A-Za-z]', '', h['busca'])[:30] or 'busca'}.xlsx"
+        conteudo = gerar_pat(h, user.nome)
+        nome = f"historico-patrimonio-{re.sub(r'[^0-9A-Za-z]', '', h['busca'])[:30] or 'busca'}.{ext}"
     else:
         r = _relatorio_mes(db, mes, tipo)
-        conteudo = planilha_mes(r, user.nome)
-        nome = f"relatorio-sgt-{r['mes']}-{r['tipo']}.xlsx"
-    return Response(conteudo, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    headers={"Content-Disposition": f'attachment; filename="{nome}"'})
+        conteudo = gerar_mes(r, user.nome)
+        nome = f"relatorio-sgt-{r['mes']}-{r['tipo']}.{ext}"
+    return Response(conteudo, media_type=mime, headers={"Content-Disposition": f'attachment; filename="{nome}"'})
 
 
 def _relatorio_mes(db: Session, mes: str, tipo: str) -> dict:

@@ -33,6 +33,7 @@
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4 print:hidden">
   {{ cabecalho(rel_titulo if hist else "Relatórios", rel_sub if hist else "Movimentação de " ~ titulo ~ " · " ~ tipo_txt) }}
   <div class="flex flex-wrap gap-2">
+    <a class="btn btn-ghost" href="/relatorios/pdf?{{ q_planilha }}">{{ icone("guia", "size-4") }}Baixar PDF</a>
     <a class="btn btn-ghost" href="/relatorios/planilha?{{ q_planilha }}">{{ icone("relatorio", "size-4") }}Baixar planilha (Excel)</a>
     <button class="btn btn-ghost" data-print>{{ icone("imprimir", "size-4") }}Imprimir relatório</button>
   </div>
