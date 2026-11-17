@@ -143,7 +143,7 @@
 }
 
 /* ---------- Etiqueta física (300x100 px) e guia impressa: medidas fixas para impressão ---------- */
-.etq { position: relative; font-size: 12px; width: 39em; height: 19.5em; flex: none; overflow: hidden; break-inside: avoid;
+.etq { position: relative; font-size: 7.8px; width: 39em; height: 19.5em; flex: none; overflow: hidden; break-inside: avoid;
   border-radius: .5em; box-shadow: 0 0 0 1px #c4c4c4; background: linear-gradient(135deg, #34363b 0%, #1d1e21 45%, #0b0b0c 100%); color: #fff;
   font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; line-height: 1.1;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -192,7 +192,7 @@
 .assin p { margin: 12px 0 0; white-space: nowrap; }
 .corte { border: 0; border-top: 1px dashed #000; margin: 18px 0; }
 
-@media (max-width: 640px) { .etq { font-size: 2.2vw; } }
+@media (max-width: 640px) { .etq { font-size: min(7.8px, 2.2vw); } }
 
 /* ---------- Relatório impresso (padrão institucional, A4) ---------- */
 .rel-cab, .rel-rodape, .rel-resumo { display: none; }
