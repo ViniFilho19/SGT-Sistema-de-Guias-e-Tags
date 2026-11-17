@@ -1,14 +1,31 @@
 {% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}
-{% block title %}Minha senha{% endblock %}
+{% block title %}Usuários{% endblock %}
 {% block content %}
-<div class="mb-6">{{ cabecalho("Minha senha", "Altere a senha que você usa para entrar no SGT.") }}</div>
-<form class="card max-w-md space-y-4" method="post" action="/minha-senha" autocomplete="off"
-      data-confirm="Confirma a troca da sua senha? Depois disso, use a nova senha para entrar.">
-  {{ alertas(erro, ok) }}
-  <label>Senha atual<input name="atual" type="password" required autocomplete="current-password" autofocus></label>
-  <label>Nova senha <span class="text-xs font-normal text-slate-400">mín. 8 caracteres</span>
-    <input name="nova" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
-  <label>Repita a nova senha<input name="nova2" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
-  <button class="btn w-full">{{ icone("chave", "size-4") }}Alterar senha</button>
-</form>
+<div class="mb-6">{{ cabecalho("Usuários", "Sua conta de acesso ao SGT.") }}</div>
+<div class="grid items-start gap-6 lg:grid-cols-3">
+  <section class="card">
+    <div class="flex items-center gap-3">
+      <span class="grid size-11 shrink-0 place-items-center rounded-full bg-brand-100 text-base font-bold text-brand-700">{{ user.nome[:1]|upper }}</span>
+      <div><p class="font-semibold text-slate-900">{{ user.nome }}</p><p class="text-sm text-slate-500">{{ user.username }}</p></div>
+    </div>
+    <dl class="mt-5 space-y-2 text-sm">
+      <div class="flex justify-between"><dt class="text-slate-500">Papel</dt><dd class="font-medium text-slate-800">{{ user.papel|capitalize }}</dd></div>
+      <div class="flex justify-between"><dt class="text-slate-500">Status</dt><dd><span class="badge b-green">Ativo</span></dd></div>
+    </dl>
+    <p class="mt-5 text-xs text-slate-500">Para mudar nome, login ou papel, fale com um administrador.</p>
+  </section>
+
+  <form class="card space-y-4 lg:col-span-2" method="post" action="/usuarios/minha-senha" autocomplete="off"
+        data-confirm="Confirma a troca da sua senha? Depois disso, use a nova senha para entrar.">
+    <h2 class="section-title flex items-center gap-2">{{ icone("chave", "size-5 text-brand-600") }}Alterar minha senha</h2>
+    {{ alertas(erro, ok) }}
+    <label>Senha atual<input name="atual" type="password" required autocomplete="current-password"></label>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label>Nova senha<input name="nova" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+      <label>Repita a nova senha<input name="nova2" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+    </div>
+    <p class="text-xs text-slate-500">Mínimo de 8 caracteres. Você vai precisar confirmar a troca antes de ela ser gravada.</p>
+    <button class="btn">{{ icone("chave", "size-4") }}Alterar senha</button>
+  </form>
+</div>
 {% endblock %}

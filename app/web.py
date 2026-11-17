@@ -368,7 +368,9 @@ def _alvo(db: Session, id_: int) -> User:
 
 @router.get("/usuarios")
 def usuarios(request: Request, ok: str = "", erro: str = "", db: Session = Depends(get_db),
-             user: User = Depends(admin_web)):
+             user: User = Depends(usuario_web)):
+    if user.papel != "admin":  # operador vê só a própria conta, onde pode trocar a senha
+        return pagina(request, "minha_senha.html", user, ok="Senha alterada com sucesso." if ok == "senha" else None)
     return _usuarios(request, db, user, erro=ERROS.get(erro), ok=AVISOS.get(ok))
 
 
@@ -496,12 +498,7 @@ def usuario_editar_salvar(request: Request, id_: int, username: str = Form(""), 
 
 
 # ---------- minha senha (qualquer usuário) ----------
-@router.get("/minha-senha")
-def minha_senha(request: Request, ok: str = "", user: User = Depends(usuario_web)):
-    return pagina(request, "minha_senha.html", user, ok="Senha alterada com sucesso." if ok else None)
-
-
-@router.post("/minha-senha")
+@router.post("/usuarios/minha-senha")
 def minha_senha_salvar(request: Request, atual: str = Form(""), nova: str = Form(""), nova2: str = Form(""),
                        db: Session = Depends(get_db), user: User = Depends(usuario_web)):
     def erro(msg, status=422):
@@ -522,7 +519,7 @@ def minha_senha_salvar(request: Request, atual: str = Form(""), nova: str = Form
         return erro("A nova senha deve ser diferente da atual.")
     user.senha_hash = hash_senha(nova)
     db.commit()
-    return RedirectResponse("/minha-senha?ok=1", 303)
+    return RedirectResponse("/usuarios?ok=senha", 303)
 
 
 # ---------- relatórios ----------

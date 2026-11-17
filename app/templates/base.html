@@ -24,7 +24,6 @@
       <span class="grid size-9 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700" title="{{ user.nome }}">{{ user.nome[:1]|upper }}</span>
       <button type="button" class="btn btn-ghost btn-icon" data-tema title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro">
         <span class="dark:hidden">{{ icone("lua", "size-4") }}</span><span class="hidden dark:inline">{{ icone("sol", "size-4") }}</span></button>
-      <a href="/minha-senha" class="btn btn-ghost btn-sm" title="Alterar minha senha">{{ icone("chave", "size-4") }}<span class="hidden lg:inline">Minha senha</span></a>
       <form method="post" action="/sair"><button class="btn btn-ghost btn-sm" title="Sair do sistema">{{ icone("sair", "size-4") }}<span class="hidden sm:inline">Sair</span></button></form>
     </div>
   </div>
@@ -32,10 +31,10 @@
   {% set menu = [("/", "Painel", "painel"), ("/etiquetas", "Etiquetas", "etiqueta"), ("/guias/nova", "Nova guia", "guia"),
                  ("/guias", "Guias emitidas", "historico"), ("/equipamentos", "Equipamentos", "equipamento"),
                  ("/relatorios", "Relatórios", "relatorio")] %}
-  {% if user.papel == "admin" %}{% set menu = menu + [("/usuarios", "Usuários", "usuarios")] %}{% endif %}
+  {% set menu = menu + [("/usuarios", "Usuários", "usuarios")] %}
   <nav class="mx-auto mt-1 flex max-w-7xl gap-1 overflow-x-auto px-2 sm:px-4" aria-label="Menu principal">
     {% for href, rotulo, ic in menu %}
-      {% set ativo = p == href or (href == "/guias" and p.startswith("/guias/") and p != "/guias/nova") %}
+      {% set ativo = p == href or (href == "/guias" and p.startswith("/guias/") and p != "/guias/nova") or (href == "/usuarios" and p.startswith("/usuarios/")) %}
       <a href="{{ href }}" class="nav-link {{ 'nav-ativo' if ativo }}"{% if ativo %} aria-current="page"{% endif %}>{{ icone(ic, "size-4") }}{{ rotulo }}</a>
     {% endfor %}
   </nav>
