@@ -19,7 +19,7 @@ from .database import get_db
 from .models import Equipamento, Etiqueta, Guia, GuiaItem, User
 from .pdf import pdf_mes, pdf_patrimonio
 from .planilha import planilha_mes, planilha_patrimonio
-from .routers.etiquetas import gerar_etiqueta, qr_data_uri, texto_qr
+from .routers.etiquetas import gerar_etiqueta
 from .routers.guias import criar as criar_guia, equipamento_por_patrimonio
 from .schemas import MOTIVOS, EtiquetaCreate, GuiaCreate, UserCreate
 from .security import (bloqueado, confere_senha, criar_token, hash_senha, limpar_falhas, registrar_falha,
@@ -124,7 +124,7 @@ def painel(request: Request, user: User = Depends(usuario_web)):
 def _etiquetas(request, db, user, status=200, erro=None, v=None):
     recentes = db.scalars(select(Etiqueta).options(selectinload(Etiqueta.equipamento))
                           .where(Etiqueta.operador_id == user.id, Etiqueta.oculta.is_(False)).order_by(Etiqueta.id.desc()).limit(12)).all()
-    itens = [{"id": e.id, "eq": e.foto, "qr": qr_data_uri(texto_qr(e.foto))} for e in recentes]
+    itens = [{"id": e.id, "eq": e.foto, "modelo": e.equipamento.modelo if e.equipamento else ""} for e in recentes]
     campos = ("hostname", "ip", "patrimonio", "serial", "localidade", "mascara", "gateway")
     return pagina(request, "etiquetas.html", user, status, etiquetas=itens, erro=erro,
                   v=v or {c: "" for c in campos})
