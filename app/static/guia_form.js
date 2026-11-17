@@ -8,6 +8,13 @@
   var CAMPOS = ["modelo", "serial", "hostname", "ip"];
   var timers = new WeakMap();
 
+  var GRUPOS = { Celular: "celular", Chip: "chip" }; // demais tipos: "padrao" (mesmo mapa de web.py)
+
+  function ajustarGrupo(linha) {
+    var sel = linha.querySelector("[name=tipo_equipamento]");
+    linha.setAttribute("data-grupo", (sel && GRUPOS[sel.value]) || "padrao");
+  }
+
   function linhas() {
     return tabela.querySelectorAll("tr.linha-eq");
   }
@@ -26,6 +33,7 @@
     nova.querySelectorAll("select").forEach(function (s) { s.selectedIndex = 0; });
     var caixa = nova.querySelector(".sugestao");
     if (caixa) caixa.textContent = "";
+    ajustarGrupo(nova);
     ultima.parentNode.appendChild(nova);
     campo(nova, "patrimonio").focus();
     if (linhas().length >= MAX_LINHAS) botaoMais.disabled = true;
@@ -37,6 +45,7 @@
     linha.querySelectorAll("select").forEach(function (s) { s.selectedIndex = 0; });
     var caixa = linha.querySelector(".sugestao");
     if (caixa) caixa.textContent = "";
+    ajustarGrupo(linha);
     campo(linha, "patrimonio").focus();
   }
 
@@ -84,7 +93,7 @@
     botao.className = "btn btn-ghost btn-sm ml-2 mt-1";
     botao.textContent = "Preencher lacunas";
     botao.addEventListener("click", function () {
-      if (mudaTipo) campo(linha, "tipo_equipamento").value = d.tipo;
+      if (mudaTipo) { campo(linha, "tipo_equipamento").value = d.tipo; ajustarGrupo(linha); }
       falta.forEach(function (nome) { campo(linha, nome).value = d[nome]; });
       caixa.textContent = "";
     });
@@ -121,6 +130,7 @@
   });
   tabela.addEventListener("change", function (e) {
     if (e.target.matches("input[name=patrimonio]")) agendar(e.target, 0);
+    if (e.target.matches("select[name=tipo_equipamento]")) ajustarGrupo(e.target.closest("tr"));
   });
 
   // linhas que já vêm preenchidas (ex.: formulário reexibido após um erro)

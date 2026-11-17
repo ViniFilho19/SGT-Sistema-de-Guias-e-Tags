@@ -28,8 +28,20 @@ from .security import (bloqueado, confere_senha, criar_token, hash_senha, limpar
 COOKIE = "sessao"
 FUSO = ZoneInfo("America/Bahia")
 SD = "CTI - SERVICE DESK"
-TIPOS = ["Computador", "Monitor", "Teclado", "Mouse", "Switch", "Estabilizador", "Notebook", "Projetor", "Webcam"]
-COLS_ITEM = ("tipo_equipamento", "modelo", "patrimonio", "serial", "hostname", "ip")
+TIPOS = ["Computador", "Monitor", "Teclado", "Mouse", "Switch", "Estabilizador", "Notebook", "Projetor", "Webcam",
+         "Celular", "Chip"]
+GRUPO_TIPO = {"Celular": "celular", "Chip": "chip"}  # tipos com campos próprios na guia (os demais: "padrao")
+# campos de cada grupo no formulário: nome do input -> campo gravado no item
+CAMPOS_GRUPO = {
+    "padrao": {"modelo": "modelo", "patrimonio": "patrimonio", "serial": "serial", "hostname": "hostname", "ip": "ip"},
+    "celular": {"marca": "marca", "modelo_cel": "modelo", "imei": "imei"},
+    "chip": {"ddd": "ddd", "linha": "linha", "serial_chip": "serial"},
+}
+COLS_ITEM = ("tipo_equipamento", *(n for g in CAMPOS_GRUPO.values() for n in g))  # todos os inputs de uma linha
+
+
+def grupo_tipo(tipo: str) -> str:
+    return GRUPO_TIPO.get(tipo, "padrao")
 LINHAS = 3  # linhas iniciais do formulário de guia (o botão + cria mais)
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")  # autoescape ligado
@@ -180,6 +192,8 @@ def etiqueta_ocultar(id_: int, db: Session = Depends(get_db), user: User = Depen
 def _form_guia(request, user, v=None, linhas=None, erro=None, status=200, divergencias=None, assinatura=""):
     v = v or {"tipo": SAIDA, "motivo": "", "chamado": "", "remetente": "", "destinatario": "", "responsavel": ""}
     linhas = linhas or [{c: "" for c in COLS_ITEM} | {"tipo_equipamento": "Computador"} for _ in range(LINHAS)]
+    for l in linhas:
+        l["grupo"] = grupo_tipo(l.get("tipo_equipamento", ""))
     return pagina(request, "guias_nova.html", user, status, v=v, linhas=linhas, tipos=TIPOS, erro=erro,
                   tipos_guia=[SAIDA, ENTRADA], motivos=MOTIVOS, divergencias=divergencias, assinatura=assinatura)
 
@@ -225,7 +239,11 @@ async def guia_criar(request: Request, db: Session = Depends(get_db), user: User
     v = {c: str(f.get(c, "")).strip() for c in ("tipo", "motivo", "chamado", "remetente", "destinatario", "responsavel")}
     linhas = [dict(zip(COLS_ITEM, (str(x).strip() for x in vals)))
               for vals in zip(*(f.getlist(c) for c in COLS_ITEM))]
-    itens = [l for l in linhas if any(l[c] for c in COLS_ITEM[1:])]
+    itens = []  # cada linha grava só os campos do seu tipo (celular, chip ou equipamento comum)
+    for l in linhas:
+        item = {destino: l[nome] for nome, destino in CAMPOS_GRUPO[grupo_tipo(l["tipo_equipamento"])].items()}
+        if any(item.values()):
+            itens.append({"tipo_equipamento": l["tipo_equipamento"], **item})
     if v["tipo"].startswith("GUIA DE ENTRADA"):
         v["destinatario"] = v["destinatario"] or SD
     elif v["tipo"].startswith("GUIA DE SAÍDA"):

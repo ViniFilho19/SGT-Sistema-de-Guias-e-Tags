@@ -18,6 +18,9 @@ COLUNAS = {
         ("codigo_original", "VARCHAR(30)"),
         ("operador_original", "VARCHAR(100)"),
     ],
+    "guia_itens": [
+        ("marca", "VARCHAR(100)"), ("imei", "VARCHAR(30)"), ("ddd", "VARCHAR(5)"), ("linha", "VARCHAR(30)"),
+    ],
 }
 
 

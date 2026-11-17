@@ -105,4 +105,8 @@ class GuiaItem(Base):
     serial: Mapped[Optional[str]] = mapped_column(String(100))
     hostname: Mapped[Optional[str]] = mapped_column(String(100))
     ip: Mapped[Optional[str]] = mapped_column(String(45))
+    marca: Mapped[Optional[str]] = mapped_column(String(100))  # celular
+    imei: Mapped[Optional[str]] = mapped_column(String(30))  # celular
+    ddd: Mapped[Optional[str]] = mapped_column(String(5))  # chip
+    linha: Mapped[Optional[str]] = mapped_column(String(30))  # chip (número da linha)
     guia: Mapped[Guia] = relationship(back_populates="itens")

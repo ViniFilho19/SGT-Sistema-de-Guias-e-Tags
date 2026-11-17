@@ -51,7 +51,7 @@ Destino: {{ g.destinatario }}
 {% endif %}{% if g.entregue_por %}Entregue por: {{ g.entregue_por }}
 {% endif %}
 {{ "Equipamento" if g.itens|length == 1 else "Equipamentos" }}:
-{% for i in g.itens %}- {{ [i.tipo_equipamento, i.modelo]|select|join(" ") }}{% for rot, val in [("Patrimônio", i.patrimonio), ("Série", i.serial), ("Hostname", i.hostname), ("IP", i.ip)] if val %} | {{ rot }}: {{ val }}{% endfor %}
+{% for i in g.itens %}- {{ [i.tipo_equipamento, i.marca, i.modelo]|select|join(" ") }}{% for rot, val in [("DDD", i.ddd), ("Linha", i.linha), ("IMEI", i.imei), ("Patrimônio", i.patrimonio), ("Série", i.serial), ("Hostname", i.hostname), ("IP", i.ip)] if val %} | {{ rot }}: {{ val }}{% endfor %}
 {% endfor %}
 Guia de saída{{ " (" ~ g.tipo.split(" - ", 1)[1]|lower ~ ")" if " - " in g.tipo }} nº {{ g.id }}.
 
@@ -78,8 +78,11 @@ CTI - Service Desk
     <div class="dados"><span><b>Chamado:</b> {{ g.chamado or "N/A" }}</span><span><b>Remetente:</b> {{ g.remetente }}</span><span><b>Destinatário:</b> {{ g.destinatario }}</span></div>
     <h3 class="mt-3 mb-1.5 text-sm font-bold">Equipamentos</h3>
     <table class="guia-t"><tr><th>ITEM</th><th>MODELO/MARCA</th><th>PATRIMÔNIO</th><th>Nº DE SÉRIE</th><th>NOME DA MÁQUINA</th><th>I.P</th></tr>
-      {% for i in g.itens %}<tr><td>{{ i.tipo_equipamento }}</td><td>{{ i.modelo or "" }}</td><td>{{ i.patrimonio or "" }}</td>
-        <td>{{ i.serial or "" }}</td><td>{{ i.hostname or "" }}</td><td>{{ i.ip or "" }}</td></tr>{% endfor %}</table>
+      {% for i in g.itens %}<tr><td>{{ i.tipo_equipamento }}</td>
+        {% if i.ddd or i.linha %}<td>Linha: {{ ["(" ~ i.ddd ~ ")" if i.ddd, i.linha]|select|join(" ") }}</td>
+        {% else %}<td>{{ [i.marca, i.modelo]|select|join(" ") }}</td>{% endif %}
+        <td>{{ i.patrimonio or "" }}</td>
+        <td>{{ "IMEI: " ~ i.imei if i.imei else "" }}{{ " / " if i.imei and i.serial }}{{ i.serial or "" }}</td><td>{{ i.hostname or "" }}</td><td>{{ i.ip or "" }}</td></tr>{% endfor %}</table>
     <div class="assin">
       <div><h4>Responsável CTI</h4><p>Nome: {% if g.responsavel %}<strong>{{ g.responsavel }}</strong>{% else %}_______________________________{% endif %}</p>
         <p>Contato: ____________________________</p><p>Assinatura: _________________________</p></div>

@@ -50,17 +50,21 @@
         <div class="faixa"></div><div class="branco"></div>
         <div class="marca"><img src="/static/logo.svg" alt=""><b>DETRAN - BA</b></div>
         <div class="info">
-          <h3>Identificação do equipamento</h3>
-          <dl>
-            {% for rot, val, lim in [("Nome", e.eq.hostname, 10), ("I.P", e.eq.ip, 13), ("Pat", e.eq.patrimonio, 10), ("Masc", e.eq.mascara, 13),
-                                    ("N/S", e.eq.serial, 10), ("Gat", e.eq.gateway, 13), ("Modelo", e.modelo, 10)] %}
-            {% set t = (val or "")|string %}
-            <div><dt>{{ rot }}</dt><dd class="{{ 'pp' if t|length > lim * 1.3 else ('p' if t|length > lim) }}">{{ t or "—" }}</dd></div>
+          {% set nome = (e.eq.hostname or "")|string %}
+          <dl class="topo">
+            <dt>Nome</dt><dd class="nome {{ 'pp' if nome|length > 12 else ('p' if nome|length > 9) }}">{{ nome or "—" }}</dd>
+            <dt>I.P</dt><dd class="ip">{{ e.eq.ip or "—" }}</dd>
+          </dl>
+          <i class="traco"></i>
+          <dl class="grade">
+            {% for rot, val in [("Pat", e.eq.patrimonio), ("Masc", e.eq.mascara), ("N/S", e.eq.serial), ("Gat", e.eq.gateway), ("Modelo", e.modelo)] %}
+            {% set v = (val or "")|string %}
+            <div><dt>{{ rot }}</dt><dd class="{{ 'p' if v|length > 15 }}">{{ v or "—" }}</dd></div>
             {% endfor %}
-            <div><dt>Tipo</dt><div class="caixas"><span><i class="{{ 'x' if e.uso == 'atendimento' }}"></i>ATENDIMENTO</span><span><i class="{{ 'x' if e.uso == 'prova' }}"></i>PROVA</span></div></div>
+            <div><dt>Tipo</dt><dd class="caixas"><span><i class="{{ 'x' if e.uso == 'atendimento' }}"></i>Atendimento</span><span><i class="{{ 'x' if e.uso == 'prova' }}"></i>Prova</span></dd></div>
           </dl>
           {% set loc = (e.eq.localidade or "")|string %}
-          <div class="local"><small>Localidade</small><b class="{{ 'pp' if loc|length > 26 else ('p' if loc|length > 20) }}">{{ loc or "—" }}</b></div>
+          <div class="local"><small>Localidade</small><b class="{{ 'pp' if loc|length > 40 else ('p' if loc|length > 28) }}">{{ loc or "—" }}</b></div>
         </div>
       </div>
         <form class="absolute -top-2.5 -right-2.5 print:hidden" method="post" action="/etiquetas/{{ e.id }}/ocultar">

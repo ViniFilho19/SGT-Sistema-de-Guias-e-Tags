@@ -112,8 +112,9 @@ def _linhas_guias(guias) -> list[list]:
 
 CAB_GUIAS = ["Nº", "Data", "Tipo", "Situação", "Chamado", "Remetente", "Destinatário", "Itens", "Retirado por", "Operador"]
 LARG_GUIAS = [7, 17, 24, 18, 14, 30, 30, 8, 24, 24]
-CAB_ITENS = ["Guia nº", "Data", "Tipo da guia", "Equipamento", "Modelo", "Patrimônio", "Nº série", "Hostname", "IP"]
-LARG_ITENS = [9, 17, 24, 14, 20, 14, 20, 16, 15]
+CAB_ITENS = ["Guia nº", "Data", "Tipo da guia", "Equipamento", "Marca", "Modelo", "Patrimônio", "Nº série", "Hostname", "IP",
+             "IMEI", "DDD", "Linha"]
+LARG_ITENS = [9, 17, 24, 14, 14, 20, 14, 20, 16, 15, 18, 7, 14]
 CAB_ETQ = ["Data", "Hostname", "IP", "Patrimônio", "Nº série", "Localidade", "Operador"]
 LARG_ETQ = [17, 16, 15, 14, 20, 34, 24]
 
@@ -147,8 +148,9 @@ def planilha_mes(r: dict, usuario: str) -> bytes:
          dias, [14, 16, 16, 16, 12], total=["Total", t["entrada"], t["saida"], t["itens"], t["etiquetas"]])
     if r["com_guias"]:
         _aba(wb, "Guias", titulo, sub, usuario, CAB_GUIAS, _linhas_guias(r["guias"]), LARG_GUIAS)
-        itens = [[g.id, _local(g.criado_em), _tipo(g), i.tipo_equipamento, i.modelo or "", i.patrimonio or "",
-                  i.serial or "", i.hostname or "", i.ip or ""] for g in r["guias"] for i in g.itens]
+        itens = [[g.id, _local(g.criado_em), _tipo(g), i.tipo_equipamento, i.marca or "", i.modelo or "", i.patrimonio or "",
+                  i.serial or "", i.hostname or "", i.ip or "", i.imei or "", i.ddd or "", i.linha or ""]
+                 for g in r["guias"] for i in g.itens]
         _aba(wb, "Equipamentos", titulo, sub, usuario, CAB_ITENS, itens, LARG_ITENS)
     if r["com_etq"]:
         _aba(wb, "Etiquetas", titulo, sub, usuario, CAB_ETQ, _linhas_etiquetas(r["etiquetas"]), LARG_ETQ)

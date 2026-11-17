@@ -106,6 +106,10 @@ class GuiaItemIn(Base):
     serial: Optional[str] = Field(default=None, max_length=100)
     hostname: Optional[str] = Field(default=None, max_length=100)
     ip: Optional[str] = Field(default=None, max_length=45)
+    marca: Optional[str] = Field(default=None, max_length=100)
+    imei: Optional[str] = Field(default=None, max_length=30)
+    ddd: Optional[str] = Field(default=None, max_length=5)
+    linha: Optional[str] = Field(default=None, max_length=30)
 
     _ips = field_validator("ip")(_checa_ip)
 
