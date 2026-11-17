@@ -234,7 +234,7 @@ async def guia_criar(request: Request, db: Session = Depends(get_db), user: User
     try:
         dados = GuiaCreate(**campos, itens=itens)
     except ValidationError:
-        return _form_guia(request, user, v, linhas, "Verifique os campos e informe ao menos um equipamento (IP válido, se preenchido).", 422)
+        return _form_guia(request, user, v, linhas, "Verifique os campos: há um IP inválido ou um texto longo demais.", 422)
 
     # dados diferentes do cadastro de equipamentos: pergunta antes de corrigir o cadastro
     divs = _divergencias(db, dados.itens)

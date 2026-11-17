@@ -125,10 +125,15 @@ TipoGuia = Literal[TIPOS_GUIA]
 class GuiaCreate(Base):
     tipo: TipoGuia
     chamado: str = Field(min_length=1, max_length=100)
-    remetente: str = Field(max_length=200)
-    destinatario: str = Field(max_length=200)
+    remetente: Optional[str] = Field(default=None, max_length=200)
+    destinatario: Optional[str] = Field(default=None, max_length=200)
     responsavel: Optional[str] = Field(default=None, max_length=200)
-    itens: list[GuiaItemIn] = Field(min_length=1, max_length=200)
+    itens: list[GuiaItemIn] = Field(default_factory=list, max_length=200)  # só o chamado é obrigatório
+
+    @field_validator("remetente", "destinatario")
+    @classmethod
+    def _vazio(cls, v):  # opcionais na tela, mas a coluna no banco não aceita nulo
+        return v or ""
 
 
 class GuiaOut(BaseModel):
