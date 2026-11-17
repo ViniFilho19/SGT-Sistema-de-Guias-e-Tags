@@ -341,6 +341,7 @@ def guia_ver(id_: int, request: Request, data: int = 1, ok: str = "", erro: str 
 # ---------- usuários (somente admin) ----------
 PAPEIS = ["operador", "admin"]
 AVISOS = {"criado": "Usuário criado.", "papel": "Papel atualizado.", "senha": "Senha redefinida.",
+          "editado": "Usuário atualizado.",
           "ativado": "Usuário ativado.", "desativado": "Usuário desativado."}
 ERROS = {"proprio": "Você não pode alterar o próprio papel nem se desativar.",
          "papel": "Papel inválido.",
@@ -420,6 +421,108 @@ def usuario_senha(id_: int, senha: str = Form(""), db: Session = Depends(get_db)
     alvo.senha_hash = hash_senha(senha)
     db.commit()
     return RedirectResponse("/usuarios?ok=senha", 303)
+
+
+def _ass_edicao(alvo_id: int, novos: dict) -> str:
+    """Identifica exatamente as mudanças revisadas; se o formulário mudar, a confirmação é pedida de novo."""
+    base = json.dumps([alvo_id, sorted(novos.items()), settings.secret_key])
+    return hashlib.sha256(base.encode()).hexdigest()[:20]
+
+
+def _form_edicao(request, user, alvo, v, erro=None, mudancas=None, assinatura="", status=200):
+    return pagina(request, "usuario_editar.html", user, status, alvo=alvo, v=v, papeis=PAPEIS, erro=erro,
+                  mudancas=mudancas, assinatura=assinatura)
+
+
+@router.get("/usuarios/{id_}/editar")
+def usuario_editar(request: Request, id_: int, db: Session = Depends(get_db), user: User = Depends(admin_web)):
+    alvo = _alvo(db, id_)
+    v = {"username": alvo.username, "nome": alvo.nome, "papel": alvo.papel, "ativo": alvo.ativo}
+    return _form_edicao(request, user, alvo, v)
+
+
+@router.post("/usuarios/{id_}/editar")
+def usuario_editar_salvar(request: Request, id_: int, username: str = Form(""), nome: str = Form(""),
+                          papel: str = Form(""), ativo: str = Form(""), senha: str = Form(""), senha2: str = Form(""),
+                          confirmar: str = Form(""), db: Session = Depends(get_db), user: User = Depends(admin_web)):
+    alvo = _alvo(db, id_)
+    proprio = alvo.id == user.id
+    v = {"username": username.strip(), "nome": " ".join(nome.split()),
+         "papel": alvo.papel if proprio else papel, "ativo": alvo.ativo if proprio else ativo == "1"}
+
+    def erro(msg):
+        return _form_edicao(request, user, alvo, v, erro=msg, status=422)
+
+    if v["papel"] not in PAPEIS:
+        return erro(ERROS["papel"])
+    try:
+        UserCreate(username=v["username"], nome=v["nome"], senha="x" * 8, papel=v["papel"])
+    except ValidationError as e:
+        campos = sorted({str(x["loc"][0]) for x in e.errors()})
+        return erro("Verifique os campos: " + ", ".join(campos) + " (login: 3 a 50 letras, números, . _ -).")
+    if senha or senha2:
+        if not _senha_ok(senha):
+            return erro(ERROS["senha"])
+        if senha != senha2:
+            return erro("A nova senha e a confirmação não conferem.")
+    if v["username"].lower() != alvo.username.lower() and db.scalar(
+            select(User.id).where(func.lower(User.username) == v["username"].lower(), User.id != alvo.id)):
+        return erro("Já existe um usuário com esse login.")
+
+    mudancas = []
+    if v["nome"] != alvo.nome:
+        mudancas.append(("Nome", alvo.nome, v["nome"]))
+    if v["username"] != alvo.username:
+        mudancas.append(("Usuário (login)", alvo.username, v["username"]))
+    if v["papel"] != alvo.papel:
+        mudancas.append(("Papel", alvo.papel.capitalize(), v["papel"].capitalize()))
+    if v["ativo"] != alvo.ativo:
+        mudancas.append(("Status", "Ativo" if alvo.ativo else "Inativo", "Ativo" if v["ativo"] else "Inativo"))
+    if senha:
+        mudancas.append(("Senha", "(atual)", "será redefinida"))
+    if not mudancas:
+        return erro("Nenhuma alteração para salvar.")
+
+    novos = {**v, "senha": senha}
+    assinatura = _ass_edicao(alvo.id, novos)
+    if confirmar != assinatura:  # 1ª confirmação: revisar "como está" x "como fica"
+        return _form_edicao(request, user, alvo, {**v, "senha": senha}, mudancas=mudancas, assinatura=assinatura)
+
+    alvo.nome, alvo.username, alvo.papel, alvo.ativo = v["nome"], v["username"], v["papel"], v["ativo"]
+    if senha:
+        alvo.senha_hash = hash_senha(senha)
+    db.commit()
+    return RedirectResponse("/usuarios?ok=editado", 303)
+
+
+# ---------- minha senha (qualquer usuário) ----------
+@router.get("/minha-senha")
+def minha_senha(request: Request, ok: str = "", user: User = Depends(usuario_web)):
+    return pagina(request, "minha_senha.html", user, ok="Senha alterada com sucesso." if ok else None)
+
+
+@router.post("/minha-senha")
+def minha_senha_salvar(request: Request, atual: str = Form(""), nova: str = Form(""), nova2: str = Form(""),
+                       db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    def erro(msg, status=422):
+        return pagina(request, "minha_senha.html", user, status, erro=msg)
+
+    chave = f"senha|{user.id}"
+    if bloqueado(chave):
+        return erro("Muitas tentativas com a senha atual errada. Aguarde 15 minutos.", 429)
+    if not confere_senha(atual, user.senha_hash):
+        registrar_falha(chave)
+        return erro("A senha atual está incorreta.", 401)
+    limpar_falhas(chave)
+    if not _senha_ok(nova):
+        return erro(ERROS["senha"])
+    if nova != nova2:
+        return erro("A nova senha e a confirmação não conferem.")
+    if nova == atual:
+        return erro("A nova senha deve ser diferente da atual.")
+    user.senha_hash = hash_senha(nova)
+    db.commit()
+    return RedirectResponse("/minha-senha?ok=1", 303)
 
 
 # ---------- relatórios ----------

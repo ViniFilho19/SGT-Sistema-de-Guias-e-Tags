@@ -1,0 +1,56 @@
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}
+{% block title %}Editar usuário{% endblock %}
+{% block content %}
+{% set proprio = alvo.id == user.id %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  {{ cabecalho("Editar usuário", alvo.nome ~ " · " ~ alvo.username) }}
+  <a href="/usuarios" class="btn btn-ghost">{{ icone("voltar", "size-4") }}Voltar</a>
+</div>
+{{ alertas(erro) }}
+
+{% if mudancas %}
+{# 2ª etapa: revisão "como está" x "como fica" antes de gravar #}
+<form class="card max-w-2xl border-amber-300 bg-amber-50" method="post" action="/usuarios/{{ alvo.id }}/editar" autocomplete="off">
+  <h2 class="section-title mb-1 flex items-center gap-2 text-amber-800">{{ icone("alerta", "size-5") }}Confirme as alterações</h2>
+  <p class="mb-4 text-sm text-amber-800">Confira o que vai mudar no cadastro de <b>{{ alvo.username }}</b>. Nada foi gravado ainda.</p>
+  <div class="overflow-x-auto"><table class="tabela">
+    <tr><th>Campo</th><th>Como está</th><th>Como fica</th></tr>
+    {% for campo, antes, depois in mudancas %}
+    <tr><td class="font-medium">{{ campo }}</td><td class="text-slate-500 line-through">{{ antes }}</td><td class="font-semibold text-slate-900">{{ depois }}</td></tr>
+    {% endfor %}
+  </table></div>
+  <input type="hidden" name="username" value="{{ v.username }}">
+  <input type="hidden" name="nome" value="{{ v.nome }}">
+  <input type="hidden" name="papel" value="{{ v.papel }}">
+  <input type="hidden" name="ativo" value="{{ '1' if v.ativo }}">
+  {% if v.senha %}<input type="hidden" name="senha" value="{{ v.senha }}"><input type="hidden" name="senha2" value="{{ v.senha }}">{% endif %}
+  <input type="hidden" name="confirmar" value="{{ assinatura }}">
+  <div class="mt-6 flex flex-wrap gap-3">
+    <button class="btn" data-confirmar="Tem certeza que deseja gravar estas alterações no usuário {{ alvo.username }}?">{{ icone("ok", "size-4") }}Sim, gravar alterações</button>
+    <a href="/usuarios/{{ alvo.id }}/editar" class="btn btn-ghost">Não, voltar e corrigir</a>
+  </div>
+</form>
+
+{% else %}
+<form class="card max-w-2xl" method="post" action="/usuarios/{{ alvo.id }}/editar" autocomplete="off">
+  <div class="grid gap-4 sm:grid-cols-2">
+    <label class="sm:col-span-2">Nome completo<input name="nome" value="{{ v.nome }}" required minlength="2" maxlength="100"></label>
+    <label>Usuário (login)<input name="username" value="{{ v.username }}" required minlength="3" maxlength="50" pattern="[a-zA-Z0-9._\-]+" autocomplete="off"></label>
+    <label>Papel<select name="papel" {{ "disabled" if proprio }}>
+      {% for p in papeis %}<option value="{{ p }}" {{ "selected" if v.papel == p }}>{{ p|capitalize }}</option>{% endfor %}</select></label>
+    <label class="sm:col-span-2 flex-row items-center gap-2 {{ 'opacity-60' if proprio }}">
+      <input type="checkbox" name="ativo" value="1" class="w-auto" {{ "checked" if v.ativo }} {{ "disabled" if proprio }}> Usuário ativo (pode entrar no sistema)</label>
+    {% if proprio %}<p class="sm:col-span-2 text-xs text-slate-500">Você não pode alterar o próprio papel nem se desativar.</p>{% endif %}
+  </div>
+  <h3 class="mt-6 mb-3 text-sm font-semibold text-slate-800">Redefinir senha <span class="font-normal text-slate-400">(deixe em branco para manter a atual)</span></h3>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <label>Nova senha<input name="senha" type="password" minlength="8" maxlength="72" autocomplete="new-password"></label>
+    <label>Repita a nova senha<input name="senha2" type="password" minlength="8" maxlength="72" autocomplete="new-password"></label>
+  </div>
+  <div class="mt-6 flex flex-wrap gap-3">
+    <button class="btn">Revisar alterações</button>
+    <a href="/usuarios" class="btn btn-ghost">Cancelar</a>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}
+{% block title %}Minha senha{% endblock %}
+{% block content %}
+<div class="mb-6">{{ cabecalho("Minha senha", "Altere a senha que você usa para entrar no SGT.") }}</div>
+<form class="card max-w-md space-y-4" method="post" action="/minha-senha" autocomplete="off"
+      data-confirm="Confirma a troca da sua senha? Depois disso, use a nova senha para entrar.">
+  {{ alertas(erro, ok) }}
+  <label>Senha atual<input name="atual" type="password" required autocomplete="current-password" autofocus></label>
+  <label>Nova senha <span class="text-xs font-normal text-slate-400">mín. 8 caracteres</span>
+    <input name="nova" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+  <label>Repita a nova senha<input name="nova2" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+  <button class="btn w-full">{{ icone("chave", "size-4") }}Alterar senha</button>
+</form>
+{% endblock %}

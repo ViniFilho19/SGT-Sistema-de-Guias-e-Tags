@@ -24,24 +24,20 @@
   <section class="card overflow-hidden p-0 lg:col-span-2">
     <h2 class="section-title px-6 pt-5 pb-4">Usuários cadastrados <span class="badge b-gray ml-1">{{ usuarios|length }}</span></h2>
     <div class="overflow-x-auto"><table class="tabela">
-      <tr><th>Usuário</th><th>Papel</th><th>Status</th><th>Redefinir senha</th><th></th></tr>
+      <tr><th>Usuário</th><th>Papel</th><th>Status</th><th></th></tr>
       {% for u in usuarios %}<tr>
         <td><div class="flex items-center gap-3">
           <span class="grid size-8 shrink-0 place-items-center rounded-full {{ 'bg-brand-100 text-brand-700' if u.ativo else 'bg-slate-100 text-slate-400' }} text-xs font-bold">{{ u.nome[:1]|upper }}</span>
           <div><p class="font-medium text-slate-900">{{ u.nome }}{% if u.id == user.id %} <span class="badge b-blue ml-1">você</span>{% endif %}</p>
             <p class="text-xs text-slate-500">{{ u.username }}</p></div></div></td>
-        <td>{% if u.id == user.id %}{{ u.papel|capitalize }}{% else %}
-          <form method="post" action="/usuarios/{{ u.id }}/papel" class="flex gap-1.5">
-            <select name="papel" class="w-auto py-1.5" aria-label="Papel de {{ u.username }}">{% for p in papeis %}<option value="{{ p }}" {{ "selected" if u.papel == p }}>{{ p|capitalize }}</option>{% endfor %}</select>
-            <button class="btn btn-ghost btn-sm">Salvar</button></form>{% endif %}</td>
+        <td>{{ u.papel|capitalize }}</td>
         <td><span class="badge {{ 'b-green' if u.ativo else 'b-gray' }}">{{ "Ativo" if u.ativo else "Inativo" }}</span></td>
-        <td><form method="post" action="/usuarios/{{ u.id }}/senha" class="flex gap-1.5">
-            <input name="senha" type="password" placeholder="Nova senha" required minlength="8" maxlength="72" autocomplete="new-password" class="w-36 py-1.5" aria-label="Nova senha de {{ u.username }}">
-            <button class="btn btn-ghost btn-sm">Redefinir</button></form></td>
-        <td class="text-right">{% if u.id != user.id %}
+        <td class="text-right"><div class="flex justify-end gap-1.5">
+          <a href="/usuarios/{{ u.id }}/editar" class="btn btn-ghost btn-sm">{{ icone("editar", "size-4") }}Editar</a>
+          {% if u.id != user.id %}
           <form method="post" action="/usuarios/{{ u.id }}/ativo"
                 {% if u.ativo %}data-confirm="Desativar {{ u.username }}? O acesso é bloqueado imediatamente."{% endif %}>
-            <button class="btn {{ 'btn-ghost text-red-600 hover:bg-red-50' if u.ativo else 'btn-ghost' }} btn-sm">{{ "Desativar" if u.ativo else "Ativar" }}</button></form>{% endif %}</td>
+            <button class="btn {{ 'btn-ghost text-red-600 hover:bg-red-50' if u.ativo else 'btn-ghost' }} btn-sm">{{ "Desativar" if u.ativo else "Ativar" }}</button></form>{% endif %}</div></td>
       </tr>{% endfor %}
     </table></div>
   </section>
