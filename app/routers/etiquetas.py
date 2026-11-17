@@ -21,7 +21,7 @@ def texto_qr(eq: Equipamento) -> str:
             f"IP: {eq.ip or ''}\nMáscara: {eq.mascara or ''}\nGateway: {eq.gateway or ''}")
 
 
-def gerar_etiqueta(db: Session, dados: EtiquetaCreate, user: User) -> Etiqueta:
+def gerar_etiqueta(db: Session, dados: EtiquetaCreate, user: User, uso: str | None = None) -> Etiqueta:
     """Cria o equipamento (ou atualiza, se o patrimônio já existir) e registra o histórico."""
     from .guias import equipamento_por_patrimonio  # '35695' acha o cadastro '035695'
     eq = equipamento_por_patrimonio(db, dados.patrimonio)
@@ -34,7 +34,7 @@ def gerar_etiqueta(db: Session, dados: EtiquetaCreate, user: User) -> Etiqueta:
         eq = Equipamento(tipo="Computador", **dados.model_dump())
         db.add(eq)
     db.flush()
-    etiqueta = Etiqueta(equipamento_id=eq.id, operador_id=user.id, **dados.model_dump())
+    etiqueta = Etiqueta(equipamento_id=eq.id, operador_id=user.id, uso=uso or None, **dados.model_dump())
     db.add(etiqueta)
     db.commit()
     db.refresh(etiqueta)

@@ -124,10 +124,14 @@ def painel(request: Request, user: User = Depends(usuario_web)):
 def _etiquetas(request, db, user, status=200, erro=None, v=None):
     recentes = db.scalars(select(Etiqueta).options(selectinload(Etiqueta.equipamento))
                           .where(Etiqueta.operador_id == user.id, Etiqueta.oculta.is_(False)).order_by(Etiqueta.id.desc()).limit(12)).all()
-    itens = [{"id": e.id, "eq": e.foto, "modelo": e.equipamento.modelo if e.equipamento else ""} for e in recentes]
-    campos = ("hostname", "ip", "patrimonio", "serial", "localidade", "mascara", "gateway")
+    itens = [{"id": e.id, "eq": e.foto, "modelo": e.equipamento.modelo if e.equipamento else "", "uso": e.uso}
+             for e in recentes]
+    campos = ("hostname", "ip", "patrimonio", "serial", "localidade", "mascara", "gateway", "uso")
     return pagina(request, "etiquetas.html", user, status, etiquetas=itens, erro=erro,
                   v=v or {c: "" for c in campos})
+
+
+USOS = {"atendimento": "Atendimento", "prova": "Prova"}  # tipo marcado na etiqueta
 
 
 @router.get("/etiquetas")
@@ -138,15 +142,17 @@ def etiquetas(request: Request, db: Session = Depends(get_db), user: User = Depe
 @router.post("/etiquetas")
 def etiqueta_criar(request: Request, hostname: str = Form(""), ip: str = Form(""), patrimonio: str = Form(""),
                    serial: str = Form(""), localidade: str = Form(""), mascara: str = Form(""),
-                   gateway: str = Form(""), db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+                   gateway: str = Form(""), uso: str = Form(""),
+                   db: Session = Depends(get_db), user: User = Depends(usuario_web)):
     v = dict(hostname=hostname, ip=ip, patrimonio=patrimonio, serial=serial,
              localidade=localidade, mascara=mascara, gateway=gateway)
+    uso = uso if uso in USOS else ""
     try:
         dados = EtiquetaCreate(**v)
     except ValidationError as e:
         campos = sorted({str(x["loc"][0]) for x in e.errors()})
-        return _etiquetas(request, db, user, 422, "Verifique os campos: " + ", ".join(campos), v)
-    gerar_etiqueta(db, dados, user)
+        return _etiquetas(request, db, user, 422, "Verifique os campos: " + ", ".join(campos), {**v, "uso": uso})
+    gerar_etiqueta(db, dados, user, uso)
     return RedirectResponse("/etiquetas", 303)
 
 

@@ -21,6 +21,15 @@
       <label class="sm:col-span-2">Localidade<input name="localidade" value="{{ v.localidade }}" required list="lista-localidades" autocomplete="off" placeholder="Comece a digitar para ver as sugestões"></label>
       <label>Máscara de sub-rede <span class="text-xs font-normal text-slate-400">opcional</span><input name="mascara" value="{{ v.mascara }}" inputmode="decimal"></label>
       <label>Gateway padrão <span class="text-xs font-normal text-slate-400">opcional</span><input name="gateway" value="{{ v.gateway }}" inputmode="decimal"></label>
+      <fieldset class="sm:col-span-2">
+        <legend class="mb-1.5 text-sm font-medium text-slate-700">Tipo</legend>
+        <div class="flex flex-wrap gap-2">
+          {% for valor, texto in [("atendimento", "Atendimento"), ("prova", "Prova"), ("", "Não marcar")] %}
+          <label class="flex-row items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 has-checked:border-brand-500 has-checked:bg-brand-50 has-checked:text-brand-700 cursor-pointer">
+            <input type="radio" name="uso" value="{{ valor }}" class="w-auto" {{ "checked" if (v.uso or "") == valor }}>{{ texto }}</label>
+          {% endfor %}
+        </div>
+      </fieldset>
     </div>
     <button class="btn mt-6 w-full">{{ icone("qr", "size-4") }}Criar etiqueta</button>
   </form>
@@ -48,7 +57,7 @@
             {% set t = (val or "")|string %}
             <div><dt>{{ rot }}</dt><dd class="{{ 'pp' if t|length > lim * 1.3 else ('p' if t|length > lim) }}">{{ t or "—" }}</dd></div>
             {% endfor %}
-            <div><dt>Tipo</dt><div class="caixas"><span><i></i>ATENDIMENTO</span><span><i></i>PROVA</span></div></div>
+            <div><dt>Tipo</dt><div class="caixas"><span><i class="{{ 'x' if e.uso == 'atendimento' }}"></i>ATENDIMENTO</span><span><i class="{{ 'x' if e.uso == 'prova' }}"></i>PROVA</span></div></div>
           </dl>
           {% set loc = (e.eq.localidade or "")|string %}
           <div class="local"><small>Localidade</small><b class="{{ 'pp' if loc|length > 26 else ('p' if loc|length > 20) }}">{{ loc or "—" }}</b></div>

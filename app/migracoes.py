@@ -7,6 +7,7 @@ COLUNAS = {
         ("operador_original", "VARCHAR(100)"),
         ("hostname", "VARCHAR(100)"), ("ip", "VARCHAR(45)"), ("patrimonio", "VARCHAR(100)"), ("serial", "VARCHAR(100)"),
         ("localidade", "VARCHAR(200)"), ("mascara", "VARCHAR(45)"), ("gateway", "VARCHAR(45)"),
+        ("uso", "VARCHAR(20)"),
     ],
     "guias": [
         ("status", "VARCHAR(20)"),

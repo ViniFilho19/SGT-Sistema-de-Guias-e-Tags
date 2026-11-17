@@ -58,6 +58,7 @@ class Etiqueta(Base):
     localidade: Mapped[Optional[str]] = mapped_column(String(200))
     mascara: Mapped[Optional[str]] = mapped_column(String(45))
     gateway: Mapped[Optional[str]] = mapped_column(String(45))
+    uso: Mapped[Optional[str]] = mapped_column(String(20))  # atendimento | prova | vazio (marcar à mão)
     equipamento: Mapped[Equipamento] = relationship()
     operador: Mapped[User] = relationship()
 
