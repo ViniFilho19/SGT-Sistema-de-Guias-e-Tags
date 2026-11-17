@@ -249,4 +249,6 @@
   .noprint { display: none !important; }
   .card { border: 0; box-shadow: none; padding: 0; border-radius: 0; }
   .folha { max-width: none; }
+  .folha .corte { display: none; }
+  .folha .via ~ .via { break-before: page; } /* cada via em uma folha */
 }
