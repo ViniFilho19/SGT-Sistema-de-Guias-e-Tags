@@ -147,37 +147,33 @@
   border-radius: .5em; box-shadow: 0 0 0 1px #c4c4c4; background: linear-gradient(135deg, #34363b 0%, #1d1e21 45%, #0b0b0c 100%); color: #fff;
   font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; line-height: 1.1;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-.etq .faixa { position: absolute; inset: 0 auto 0 0; width: 43%;
+.etq .faixa { position: absolute; inset: 0 auto 0 0; width: 56%;
   background: linear-gradient(180deg, #fbcb2d 0%, #f6b324 55%, #ef9a1c 100%);
-  clip-path: polygon(0 0, 72% 0, 100% 50%, 72% 100%, 0 100%); }
-.etq .branco { position: absolute; inset: 0 auto 0 0; width: 36%; background: #fff;
-  clip-path: polygon(0 0, 64% 0, 100% 50%, 64% 100%, 0 100%); }
-.etq .marca { position: absolute; left: .7em; top: 2.3em; width: 10em; text-align: center; color: #111; }
-.etq .marca img { width: 7.2em; height: 7.2em; display: block; margin: 0 auto 1.2em; }
-.etq .marca b { display: block; font-size: 1.2em; font-weight: 900; letter-spacing: .02em; white-space: nowrap; }
-.etq .info { position: absolute; left: 48%; right: 1.3em; top: .7em; bottom: .9em; display: flex; flex-direction: column; }
+  clip-path: polygon(0 0, 90% 0, 100% 50%, 90% 100%, 0 100%); }
+.etq .branco { position: absolute; inset: 0 auto 0 0; width: 50%; background: #fff;
+  clip-path: polygon(0 0, 89% 0, 100% 50%, 89% 100%, 0 100%); }
+.etq .marca { position: absolute; left: 0; top: .7em; bottom: .7em; width: 44%; display: flex; flex-direction: column;
+  align-items: center; color: #111; }
+.etq .marca .logo { width: 3.4em; height: 3.4em; display: block; }
+.etq .marca b { font-size: 1.1em; font-weight: 900; letter-spacing: .03em; white-space: nowrap; margin-top: .25em; }
+.etq .marca .qr { width: 11.4em; height: 11.4em; margin-top: auto; image-rendering: pixelated; display: block; }
+.etq .info { position: absolute; left: 62%; right: 1.2em; top: 1em; bottom: 1em; display: flex; flex-direction: column; }
+.etq h3 { margin: 0 0 .6em; font-size: .5em; font-weight: 800; color: #fbcb2d; text-transform: uppercase; letter-spacing: 0;
+  padding-bottom: .3em; border-bottom: .16em solid #fbcb2d; white-space: nowrap; }
 .etq dl { margin: 0; }
-.etq dt { font-size: .52em; font-weight: 700; color: #cfcfcf; text-transform: uppercase; letter-spacing: .02em; }
-.etq dd { margin: 0; font-weight: 800; white-space: nowrap; overflow: hidden; }
-.etq .topo dd.nome { font-size: 2.55em; font-weight: 900; line-height: 1; text-transform: uppercase; margin-bottom: .12em; }
-.etq .topo dd.nome.p { font-size: 2em; }
-.etq .topo dd.nome.pp { font-size: 1.5em; }
-.etq .topo dd.ip { font-size: 1.65em; font-weight: 900; color: #fbcb2d; line-height: 1.05; }
-.etq .traco { display: block; width: 2.4em; height: .2em; background: #fbcb2d; margin: .45em 0 .7em; }
-.etq .grade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: .8em; row-gap: .5em; }
-.etq .grade dd { font-size: .8em; margin-top: .1em; }
-.etq .grade dd.p { font-size: .66em; }
-.etq .caixas { display: flex; gap: .6em; overflow: visible !important; letter-spacing: -.01em; font-size: .52em !important; text-transform: uppercase; margin-top: .3em !important; }
-.etq .caixas span { display: flex; align-items: center; gap: .4em; }
-.etq .caixas i { width: 1.35em; height: 1.35em; border: .17em solid #fbcb2d; border-radius: .2em; display: inline-block; flex: none; }
-.etq .caixas i.x { background: linear-gradient(45deg, transparent 42%, #fbcb2d 42% 58%, transparent 58%),
-  linear-gradient(-45deg, transparent 42%, #fbcb2d 42% 58%, transparent 58%); }
-.etq .local { margin-top: auto; background: #fbcb2d; color: #111; border-radius: .5em; padding: .4em .8em .45em; }
-.etq .local small { display: block; font-size: .55em; font-weight: 700; text-transform: uppercase; }
+.etq dt { font-size: .52em; font-weight: 800; color: #fbcb2d; text-transform: uppercase; letter-spacing: .03em; }
+.etq dd { margin: 0 0 .25em; font-size: 1.85em; font-weight: 900; line-height: 1.02; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; }
+.etq dd.p { font-size: 1.45em; }
+.etq dd.pp { font-size: 1.12em; }
+.etq .uso { margin: 0; font-size: .6em; font-weight: 800; text-transform: uppercase; color: #111; background: #fff;
+  align-self: flex-start; padding: .15em .5em; border-radius: .3em; }
+.etq .local { margin-top: auto; background: #fbcb2d; color: #111; border-radius: .45em; padding: .35em .7em .4em; }
+.etq .local small { display: block; font-size: .5em; font-weight: 800; text-transform: uppercase; }
 .etq .local b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
-  font-size: 1.3em; font-weight: 900; line-height: 1.02; text-transform: uppercase; margin-top: .12em; }
-.etq .local b.p { font-size: 1.05em; }
-.etq .local b.pp { font-size: .85em; }
+  font-size: 1.05em; font-weight: 900; line-height: 1.05; text-transform: uppercase; margin-top: .1em; word-break: break-word; }
+.etq .local b.p { font-size: .9em; }
+.etq .local b.pp { font-size: .75em; }
 
 .folha { background: #fff; color: #000; max-width: 900px; margin: auto; }
 .via small { display: block; text-align: right; font-weight: 700; color: #666; font-size: 12px; }

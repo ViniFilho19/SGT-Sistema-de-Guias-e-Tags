@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}{% from "_guias.html" import datalist_localidades with context %}
+{% from "_etiqueta.html" import etiqueta, campos %}
+{% block title %}Editar etiqueta{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  {{ cabecalho("Editar etiqueta", "Corrija os dados e salve: a etiqueta e o cadastro do equipamento são atualizados.") }}
+  <a href="/etiquetas" class="btn btn-ghost">{{ icone("voltar", "size-4") }}Voltar</a>
+</div>
+<div class="grid items-start gap-6 lg:grid-cols-5">
+  <form class="card lg:col-span-3" method="post" action="/etiquetas/{{ item.id }}/editar"
+        data-confirm="Salvar as alterações nesta etiqueta?">
+    <h2 class="section-title mb-5 flex items-center gap-2">{{ icone("editar", "size-5 text-brand-600") }}Dados da etiqueta</h2>
+    {{ alertas(erro) }}
+    {{ campos(v, busca=False) }}
+    <div class="mt-6 flex flex-wrap gap-3">
+      <button class="btn">{{ icone("ok", "size-4") }}Salvar alterações</button>
+      <a href="/etiquetas" class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+  <section class="card lg:col-span-2">
+    <h2 class="section-title mb-4">Como está hoje</h2>
+    {{ etiqueta(item) }}
+  </section>
+</div>
+{{ datalist_localidades() }}
+<script src="{{ static_url('etiqueta_form.js') }}"></script>
+{% endblock %}

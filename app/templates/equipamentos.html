@@ -3,21 +3,26 @@
 {% block content %}
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
   {{ cabecalho("Equipamentos", "Cadastro de equipamentos com etiqueta ou guia emitida.") }}
-  <form method="get" class="flex w-full gap-2 sm:w-auto" role="search">
-    <div class="relative flex-1 sm:w-80">
+  <form method="get" class="flex w-full flex-wrap gap-2 sm:w-auto" role="search">
+    <div class="relative min-w-60 flex-1 sm:w-80">
       <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">{{ icone("buscar", "size-4") }}</span>
-      <input name="q" value="{{ q }}" placeholder="Patrimônio, série, hostname ou IP" class="pl-9" aria-label="Buscar equipamento">
+      <input name="q" value="{{ q }}" placeholder="Patrimônio, série, hostname, IP ou localidade" class="pl-9" aria-label="Buscar equipamento">
     </div>
+    <select name="ordem" class="w-auto" aria-label="Ordenar por" data-auto-enviar>
+      {% for valor, rotulo in ordens %}<option value="{{ valor }}" {{ "selected" if ordem == valor }}>{{ rotulo }}</option>{% endfor %}
+    </select>
     <button class="btn">Buscar</button>
   </form>
 </div>
+<p class="mb-3 text-sm text-slate-500">{{ "{:,}".format(total).replace(",", ".") }} equipamento{{ "s" if total != 1 }}{% if q %} para “{{ q }}”{% endif %}{% if total > limite %} — mostrando os {{ limite }} primeiros; use a busca para achar os demais{% endif %}.</p>
 <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
-  <tr><th>Tipo</th><th>Modelo</th><th>Patrimônio</th><th>Nº série</th><th>Hostname</th><th>IP</th><th>Localidade</th></tr>
+  <tr><th>Tipo</th><th>Modelo</th><th>Patrimônio</th><th>Nº série</th><th>Hostname</th><th>IP</th><th>Localidade</th><th>Cadastro</th></tr>
   {% for e in itens %}<tr><td><span class="badge b-blue">{{ e.tipo }}</span></td><td>{{ e.modelo or "" }}</td>
     <td class="font-medium text-slate-900">{{ e.patrimonio or "" }}</td><td>{{ e.serial or "" }}</td>
-    <td>{{ e.hostname or "" }}</td><td class="font-mono text-xs">{{ e.ip or "" }}</td><td>{{ e.localidade or "" }}</td></tr>
-  {% else %}<tr><td colspan="7" class="py-14 text-center text-slate-500">
+    <td>{{ e.hostname or "" }}</td><td class="font-mono text-xs">{{ e.ip or "" }}</td><td>{{ e.localidade or "" }}</td>
+    <td class="whitespace-nowrap text-xs text-slate-500">{{ e.cadastro }}</td></tr>
+  {% else %}<tr><td colspan="8" class="py-14 text-center text-slate-500">
     <span class="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400">{{ icone("buscar", "size-6") }}</span>
-    Nenhum equipamento encontrado{% if q %} para “{{ q }}”. <a href="/equipamentos" class="font-medium text-brand-700 hover:underline">Limpar busca</a>{% else %}.{% endif %}</td></tr>{% endfor %}
+    Nenhum equipamento encontrado{% if q %} para “{{ q }}”. <a href="/equipamentos?ordem={{ ordem }}" class="font-medium text-brand-700 hover:underline">Limpar busca</a>{% else %}.{% endif %}</td></tr>{% endfor %}
 </table></div></div>
 {% endblock %}

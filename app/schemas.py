@@ -79,7 +79,14 @@ class EtiquetaCreate(Base):
     mascara: Optional[str] = Field(default=None, max_length=45)
     gateway: Optional[str] = Field(default=None, max_length=45)
 
-    _ips = field_validator("ip", "mascara", "gateway")(_checa_ip)
+    _ips = field_validator("mascara", "gateway")(_checa_ip)
+
+    @field_validator("ip")
+    @classmethod
+    def _ip_ou_dhcp(cls, v):
+        """Máquina sem IP fixo: aceita "DHCP" ou "WIFI" no lugar do endereço."""
+        t = (v or "").strip().upper().replace("-", "")
+        return t if t in ("DHCP", "WIFI") else _checa_ip(v)
 
 
 class EtiquetaOut(BaseModel):

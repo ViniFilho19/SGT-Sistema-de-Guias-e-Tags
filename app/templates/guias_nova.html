@@ -47,7 +47,7 @@
 
   <section class="card">
     <h2 class="section-title flex items-center gap-2"><span class="grid size-6 place-items-center rounded-full bg-brand-700 text-xs font-bold text-white">2</span>Equipamentos</h2>
-    <p class="mt-1 mb-5 text-sm text-slate-500">Uma linha por equipamento; linhas vazias são ignoradas. Ao digitar um patrimônio já cadastrado, o sistema oferece preencher o restante. Para <b>Celular</b> os campos são marca, modelo e IMEI; para <b>Chip</b>, DDD, linha e nº de série.</p>
+    <p class="mt-1 mb-5 text-sm text-slate-500">Uma linha por equipamento; linhas vazias são ignoradas. Ao digitar um patrimônio ou nº de série já cadastrado, o sistema oferece preencher o restante. Para <b>Celular</b> os campos são marca, modelo e IMEI; para <b>Chip</b>, DDD, linha e nº de série.</p>
     <div class="-mx-6 overflow-x-auto border-y border-slate-100"><table id="tabela-equipamentos" class="tabela tabela-input min-w-[900px]">
       <tr><th class="w-40">Tipo</th><th>Modelo/Marca</th><th>Patrimônio</th><th>Nº série</th><th>Hostname</th><th>IP</th><th class="w-20"></th></tr>
       {% for l in linhas %}<tr class="linha-eq align-top" data-grupo="{{ l.grupo }}">

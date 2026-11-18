@@ -2,6 +2,10 @@
 document.addEventListener("click", function (e) {
   if (e.target.closest("[data-print]")) window.print();
 });
+// <select data-auto-enviar> envia o formulário assim que a opção muda (ex.: ordenação da lista)
+document.addEventListener("change", function (e) {
+  if (e.target.matches && e.target.matches("select[data-auto-enviar]") && e.target.form) e.target.form.submit();
+});
 // <form data-confirm="Pergunta?"> pede confirmação antes de enviar
 document.addEventListener("submit", function (e) {
   var msg = e.target.getAttribute && e.target.getAttribute("data-confirm");

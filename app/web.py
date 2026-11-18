@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
-from sqlalchemy import func, or_, select, true, update
+from sqlalchemy import Integer, cast, func, or_, select, true, update
 from sqlalchemy.orm import Session, selectinload
 
 from .config import settings
@@ -19,8 +19,8 @@ from .database import get_db
 from .models import Equipamento, Etiqueta, Guia, GuiaItem, User
 from .pdf import pdf_mes, pdf_patrimonio
 from .planilha import planilha_mes, planilha_patrimonio
-from .routers.etiquetas import gerar_etiqueta
-from .routers.guias import criar as criar_guia, equipamento_por_patrimonio
+from .routers.etiquetas import gerar_etiqueta, qr_data_uri, texto_qr
+from .routers.guias import criar as criar_guia, equipamento_por_patrimonio, equipamento_por_serial
 from .schemas import MOTIVOS, EtiquetaCreate, GuiaCreate, UserCreate
 from .security import (bloqueado, confere_senha, criar_token, hash_senha, limpar_falhas, registrar_falha,
                        usuario_por_token)
@@ -133,29 +133,36 @@ def painel(request: Request, user: User = Depends(usuario_web)):
 
 
 # ---------- etiquetas ----------
-def _etiquetas(request, db, user, status=200, erro=None, v=None):
+CAMPOS_ETQ = ("hostname", "ip", "patrimonio", "serial", "localidade", "mascara", "gateway")
+
+
+def _item_etq(e: Etiqueta) -> dict:
+    """Dados para desenhar a etiqueta (foto do momento da impressão + QR)."""
+    return {"id": e.id, "eq": e.foto, "qr": qr_data_uri(texto_qr(e.foto)), "uso": e.uso}
+
+
+def _etiquetas(request, db, user, status=200, erro=None, v=None, ok=None):
     recentes = db.scalars(select(Etiqueta).options(selectinload(Etiqueta.equipamento))
                           .where(Etiqueta.operador_id == user.id, Etiqueta.oculta.is_(False)).order_by(Etiqueta.id.desc()).limit(12)).all()
-    itens = [{"id": e.id, "eq": e.foto, "modelo": e.equipamento.modelo if e.equipamento else "", "uso": e.uso}
-             for e in recentes]
-    campos = ("hostname", "ip", "patrimonio", "serial", "localidade", "mascara", "gateway", "uso")
-    return pagina(request, "etiquetas.html", user, status, etiquetas=itens, erro=erro,
-                  v=v or {c: "" for c in campos})
+    return pagina(request, "etiquetas.html", user, status, etiquetas=[_item_etq(e) for e in recentes], erro=erro, ok=ok,
+                  v=v or {c: "" for c in (*CAMPOS_ETQ, "uso")})
 
 
 USOS = {"atendimento": "Atendimento", "prova": "Prova"}  # tipo marcado na etiqueta
+SEM_IP_FIXO = {"dhcp": "DHCP", "wifi": "WIFI"}  # opção marcada no formulário -> texto gravado no lugar do IP
 
 
 @router.get("/etiquetas")
-def etiquetas(request: Request, db: Session = Depends(get_db), user: User = Depends(usuario_web)):
-    return _etiquetas(request, db, user)
+def etiquetas(request: Request, ok: str = "", db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    return _etiquetas(request, db, user, ok="Etiqueta atualizada." if ok == "editada" else None)
 
 
 @router.post("/etiquetas")
 def etiqueta_criar(request: Request, hostname: str = Form(""), ip: str = Form(""), patrimonio: str = Form(""),
                    serial: str = Form(""), localidade: str = Form(""), mascara: str = Form(""),
-                   gateway: str = Form(""), uso: str = Form(""),
+                   gateway: str = Form(""), uso: str = Form(""), ip_modo: str = Form("fixo"),
                    db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    ip = SEM_IP_FIXO.get(ip_modo, ip)
     v = dict(hostname=hostname, ip=ip, patrimonio=patrimonio, serial=serial,
              localidade=localidade, mascara=mascara, gateway=gateway)
     uso = uso if uso in USOS else ""
@@ -175,6 +182,58 @@ def etiquetas_limpar(db: Session = Depends(get_db), user: User = Depends(usuario
                .values(oculta=True))
     db.commit()
     return RedirectResponse("/etiquetas", 303)
+
+
+def _etq_editavel(db: Session, id_: int, user: User) -> Etiqueta:
+    """Quem gerou a etiqueta (ou um admin) pode editá-la."""
+    et = db.get(Etiqueta, id_)
+    if not et or (et.operador_id != user.id and user.papel != "admin"):
+        raise HTTPException(404, "Etiqueta não encontrada")
+    return et
+
+
+def _form_etq_editar(request, user, et, v, erro=None, status=200):
+    return pagina(request, "etiqueta_editar.html", user, status, item=_item_etq(et), v=v, erro=erro)
+
+
+@router.get("/etiquetas/{id_}/editar")
+def etiqueta_editar(id_: int, request: Request, db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    et = _etq_editavel(db, id_, user)
+    foto = et.foto
+    v = {c: getattr(foto, c, None) or "" for c in CAMPOS_ETQ} | {"uso": et.uso or ""}
+    return _form_etq_editar(request, user, et, v)
+
+
+@router.post("/etiquetas/{id_}/editar")
+def etiqueta_salvar(id_: int, request: Request, hostname: str = Form(""), ip: str = Form(""), patrimonio: str = Form(""),
+                    serial: str = Form(""), localidade: str = Form(""), mascara: str = Form(""),
+                    gateway: str = Form(""), uso: str = Form(""), ip_modo: str = Form("fixo"),
+                    db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    et = _etq_editavel(db, id_, user)
+    ip = SEM_IP_FIXO.get(ip_modo, ip)
+    v = dict(hostname=hostname, ip=ip, patrimonio=patrimonio, serial=serial,
+             localidade=localidade, mascara=mascara, gateway=gateway)
+    uso = uso if uso in USOS else ""
+    try:
+        dados = EtiquetaCreate(**v)
+    except ValidationError as e:
+        campos = sorted({str(x["loc"][0]) for x in e.errors()})
+        return _form_etq_editar(request, user, et, {**v, "uso": uso}, "Verifique os campos: " + ", ".join(campos), 422)
+    outro = equipamento_por_patrimonio(db, dados.patrimonio)
+    if outro and outro.id != et.equipamento_id:
+        return _form_etq_editar(request, user, et, {**v, "uso": uso},
+                                f"O patrimônio {dados.patrimonio} já pertence a outro equipamento ({outro.hostname or 'sem hostname'}).", 409)
+    novos = dados.model_dump()
+    for campo, valor in novos.items():
+        setattr(et, campo, valor)
+    et.uso = uso or None
+    eq = et.equipamento  # o cadastro do equipamento acompanha a correção
+    if eq:
+        for campo, valor in novos.items():
+            setattr(eq, campo, valor)
+        eq.atualizado_em = datetime.now(timezone.utc)
+    db.commit()
+    return RedirectResponse("/etiquetas?ok=editada", 303)
 
 
 @router.post("/etiquetas/{id_}/ocultar")
@@ -785,9 +844,10 @@ def _relatorio_mes(db: Session, mes: str = "", tipo: str = "todos", periodo: str
 
 # ---------- equipamentos ----------
 @router.get("/equipamentos/buscar")
-def equipamento_buscar(patrimonio: str = "", db: Session = Depends(get_db), user: User = Depends(usuario_web)):
-    """Usada pelo formulário de guia: devolve os dados do equipamento com esse patrimônio, se existir."""
-    eq = equipamento_por_patrimonio(db, patrimonio)
+def equipamento_buscar(patrimonio: str = "", serial: str = "", db: Session = Depends(get_db),
+                       user: User = Depends(usuario_web)):
+    """Usada pelos formulários de guia e etiqueta: dados do equipamento com esse patrimônio ou nº de série."""
+    eq = equipamento_por_patrimonio(db, patrimonio) if patrimonio.strip() else equipamento_por_serial(db, serial)
     if not eq:
         return {"encontrado": False}
     return {"encontrado": True, "tipo": eq.tipo, "modelo": eq.modelo or "", "serial": eq.serial or "",
@@ -795,11 +855,36 @@ def equipamento_buscar(patrimonio: str = "", db: Session = Depends(get_db), user
             "mascara": eq.mascara or "", "gateway": eq.gateway or "", "patrimonio": eq.patrimonio or ""}
 
 
+def _vazio_por_ultimo(col):
+    return or_(col.is_(None), col == "")  # False (0) antes de True (1): vazios vão para o fim
+
+
+_PAT_NUM = cast(Equipamento.patrimonio, Integer)  # '035530' -> 35530 (ordem numérica); texto vira 0 e vai pro fim
+E = Equipamento
+ORDENS = {  # valor -> (rótulo, ordenação)
+    "novos": ("Mais novos no sistema", (E.criado_em.desc(), E.id.desc())),
+    "antigos": ("Mais antigos no sistema", (E.criado_em.asc(), E.id.asc())),
+    "host_az": ("Hostname (A → Z)", (_vazio_por_ultimo(E.hostname), func.lower(E.hostname), E.id)),
+    "host_za": ("Hostname (Z → A)", (_vazio_por_ultimo(E.hostname), func.lower(E.hostname).desc(), E.id)),
+    "pat_asc": ("Patrimônio (menor → maior)", (_vazio_por_ultimo(E.patrimonio), _PAT_NUM == 0, _PAT_NUM, E.patrimonio)),
+    "pat_desc": ("Patrimônio (maior → menor)", (_vazio_por_ultimo(E.patrimonio), _PAT_NUM == 0, _PAT_NUM.desc(), E.patrimonio.desc())),
+    "local_az": ("Localidade (A → Z)", (_vazio_por_ultimo(E.localidade), func.lower(E.localidade), func.lower(E.hostname))),
+}
+LIMITE_EQ = 200
+
+
 @router.get("/equipamentos")
-def equipamentos(request: Request, q: str = "", db: Session = Depends(get_db), user: User = Depends(usuario_web)):
-    stmt = select(Equipamento).order_by(Equipamento.id.desc()).limit(200)
+def equipamentos(request: Request, q: str = "", ordem: str = "novos", db: Session = Depends(get_db),
+                 user: User = Depends(usuario_web)):
+    ordem = ordem if ordem in ORDENS else "novos"
+    filtro = true()
     if q.strip():
         like = f"%{q.strip()[:100]}%"
-        stmt = stmt.where(or_(Equipamento.patrimonio.ilike(like), Equipamento.serial.ilike(like),
-                              Equipamento.hostname.ilike(like), Equipamento.ip.ilike(like)))
-    return pagina(request, "equipamentos.html", user, itens=db.scalars(stmt).all(), q=q)
+        filtro = or_(E.patrimonio.ilike(like), E.serial.ilike(like), E.hostname.ilike(like), E.ip.ilike(like),
+                     E.localidade.ilike(like), E.modelo.ilike(like))
+    itens = db.scalars(select(E).where(filtro).order_by(*ORDENS[ordem][1]).limit(LIMITE_EQ)).all()
+    for e in itens:
+        e.cadastro = hora_local(e.criado_em, "%d/%m/%Y") if e.criado_em else ""
+    total = db.scalar(select(func.count(E.id)).where(filtro))
+    return pagina(request, "equipamentos.html", user, itens=itens, q=q, ordem=ordem, total=total, limite=LIMITE_EQ,
+                  ordens=[(k, v[0]) for k, v in ORDENS.items()])

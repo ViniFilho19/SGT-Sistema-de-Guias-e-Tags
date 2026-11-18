@@ -1,3 +1,4 @@
+import re
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -24,13 +25,26 @@ def equipamento_por_patrimonio(db: Session, patrimonio: Optional[str]) -> Option
                       .order_by(Equipamento.id)).first()
 
 
+def equipamento_por_serial(db: Session, serial: Optional[str]) -> Optional[Equipamento]:
+    """Acha o equipamento pelo nº de série, ignorando espaços, hífens, barras, pontos e maiúsculas."""
+    ns = re.sub(r"[^0-9A-Z]", "", (serial or "").upper())[:100]
+    if len(ns) < 5:
+        return None
+    col = Equipamento.serial
+    for ch in (" ", "-", "/", "."):
+        col = func.replace(col, ch, "")
+    return db.scalars(select(Equipamento).where(func.upper(col) == ns).order_by(Equipamento.id)).first()
+
+
 @router.post("", response_model=GuiaOut, status_code=201)
 def criar(dados: GuiaCreate, db: Session = Depends(get_db), user: User = Depends(usuario_atual)):
     guia = Guia(**dados.model_dump(exclude={"itens"}), operador_id=user.id)
     if guia.tipo.startswith("GUIA DE SAÍDA"):  # saída comum ou desfazimento
         guia.status = "pronta"
     for item in dados.itens:
-        eq = equipamento_por_patrimonio(db, item.patrimonio)  # liga ao cadastro quando o patrimônio já existe
+        # liga ao cadastro quando o patrimônio (ou, sem patrimônio, o nº de série) já existe
+        eq = equipamento_por_patrimonio(db, item.patrimonio) or (
+            None if item.patrimonio else equipamento_por_serial(db, item.serial))
         guia.itens.append(GuiaItem(**item.model_dump(), equipamento_id=eq.id if eq else None))
     db.add(guia)
     db.commit()

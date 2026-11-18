@@ -1,12 +1,18 @@
-"""Importa o inventário de máquinas (CSV do agente de inventário) para o cadastro de equipamentos.
+"""Importa o inventário de máquinas (CSV do agente de inventário ou do consolidado Forescout) para o cadastro.
 
 Uso:
     python importar_inventario.py inventario.csv                     -> SIMULAÇÃO (não grava nada)
     python importar_inventario.py inventario.csv --aplicar           -> grava no banco (faz backup antes)
     python importar_inventario.py inventario.csv --desde 2025-01-01  -> ignora máquinas vistas pela última vez antes da data
 
-Usa SÓ as colunas hostname, ip, patrimonio, serial, localidade, mascara, gateway (+ ultimo_inventario para
-saber qual linha é a mais recente). As demais (fabricante, modelo, SO, usuário conectado...) são ignoradas.
+Usa SÓ as colunas hostname, ip, patrimonio, serial, localidade, mascara, gateway e modelo (+ ultimo_inventario,
+quando existir, para saber qual linha é a mais recente). As demais (MAC, status de rede, origem, SO, usuário
+conectado...) são ignoradas.
+
+Formatos aceitos (detectados pelo cabeçalho):
+- CSV do agente: separado por vírgula, UTF-8, colunas hostname, ip, ..., manufacturer, model, ultimo_inventario.
+- Consolidado Forescout: separado por ";", Latin-1/UTF-8, colunas "Hostname", "IP", "Máscara de Sub-rede",
+  "Gateway", "Modelo", "Serial Number", "Patrimônio", "Localidade / Segmento" (sem data: vale a ordem do arquivo).
 
 Regras:
 - Uma máquina é identificada pelo patrimônio; sem patrimônio, pelo nº de série; sem nenhum dos dois, pelo
@@ -15,12 +21,15 @@ Regras:
 - Linhas em ordem cronológica: a mais recente define os dados. Valor vazio/inválido não apaga dado bom.
 - Equipamentos que já existiam no sistema mantêm a localidade que já tinham.
 - Não cria etiquetas nem guias: só o cadastro de equipamentos. Pode rodar de novo sem duplicar.
+- Servidores e máquinas virtuais (VMware, VirtualBox, Qemu, PowerEdge; localidade Datacenter/Servidores/
+  Virtualização/VPN) são ignorados: o cadastro é só de máquinas físicas.
 """
 import csv
 import ipaddress
 import re
 import shutil
 import sys
+import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -78,6 +87,17 @@ GENERICOS = re.compile(r"^(DESKTOP(-\w+)?|BACKUP|BAKUP\d*|PROVA-ELETRONIC|USER-P
                        r"|X+|TESTE\d*|ATENDIMENTO|DTRD|WIN-\w+)$", re.I)
 
 
+# servidores e máquinas virtuais não entram no cadastro (só máquinas físicas de usuário)
+NAO_MAQUINA_MODELO = re.compile(r"vmware|virtualbox|qemu|poweredge|hyper-v|virtual machine", re.I)
+NAO_MAQUINA_LOCAL = re.compile(r"datacenter|servidores|virtualiza|vpn / remoto", re.I)
+
+
+def nao_e_maquina(d: dict, bruto: dict) -> bool:
+    textos = " ".join(x or "" for x in (d["modelo"], bruto.get("modelo_completo"), bruto.get("manufacturer"),
+                                         bruto.get("model"), bruto.get("serial")))
+    return bool(NAO_MAQUINA_MODELO.search(textos) or NAO_MAQUINA_LOCAL.search(d["localidade"] or ""))
+
+
 def txt(v: str | None) -> str | None:
     v = re.sub(r"\s+", " ", (v or "")).strip()
     return v or None
@@ -117,27 +137,82 @@ def chave_serial(s: str | None) -> str | None:
     return re.sub(r"[^0-9A-Z]", "", s.upper()) if s else None
 
 
+def _norm(nome: str) -> str:
+    """Cabeçalho comparável: sem acento, minúsculo ('Máscara de Sub-rede' -> 'mascara de sub-rede')."""
+    nome = unicodedata.normalize("NFKD", nome or "").encode("ascii", "ignore").decode()
+    return re.sub(r"\s+", " ", nome).strip().lower()
+
+
+# coluna do arquivo (normalizada) -> campo do importador
+COLUNAS = {
+    "hostname": "hostname", "ip": "ip", "patrimonio": "patrimonio", "serial": "serial", "serial number": "serial",
+    "localidade": "localidade", "localidade / segmento": "localidade", "mascara": "mascara",
+    "mascara de sub-rede": "mascara", "gateway": "gateway", "manufacturer": "manufacturer", "model": "model",
+    "modelo": "modelo_completo", "ultimo_inventario": "ultimo_inventario",
+    "status rede (forescout)": "status", "origem do registro": "origem",  # só para escolher a melhor linha
+}
+
+
+def qualidade(r: dict, hostname: str | None) -> tuple:
+    """Sem data no arquivo: entre linhas da mesma máquina vence a de hostname real, confirmada na rede e online."""
+    origem, status = _norm(r.get("origem", "")), _norm(r.get("status", ""))
+    return (0 if not hostname or GENERICOS.match(hostname) else 1,
+            2 if origem.startswith("atualizado") else 1 if "forescout" in origem else 0,
+            1 if status == "online" else 0)
+
+
+def modelo_completo(v: str | None) -> str | None:
+    """'Positivo Informatica SA POS-EIQ87CY' -> separa o fabricante conhecido do início e usa modelo()."""
+    v = txt(v)
+    if not v:
+        return None
+    for fab in sorted(FABRICANTES, key=len, reverse=True):
+        if v.lower().startswith(fab + " ") or v.lower() == fab:
+            return modelo(v[:len(fab)], v[len(fab):])
+    return modelo(None, v)
+
+
+def abrir(caminho: Path) -> str:
+    dados = caminho.read_bytes()
+    try:
+        return dados.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return dados.decode("cp1252")  # planilhas salvas pelo Excel em português
+
+
 def ler(caminho: Path) -> tuple[list[dict], Counter]:
     linhas, descartes = [], Counter()
-    with caminho.open(encoding="utf-8-sig", newline="") as f:
-        for n, r in enumerate(csv.DictReader(f), start=2):
-            d = {
-                "linha": n,
-                "visto": datetime.strptime(r["ultimo_inventario"].strip(), "%Y-%m-%d %H:%M:%S").replace(tzinfo=FUSO),
-                "hostname": (txt(r.get("hostname")) or "").upper() or None,
-                "ip": ip_util(r.get("ip")),
-                "patrimonio": patrimonio(r.get("patrimonio")),
-                "serial": serial(r.get("serial")),
-                "localidade": txt(r.get("localidade")),
-                "mascara": ip_util(r.get("mascara")),
-                "gateway": ip_util(r.get("gateway")),
-                "modelo": modelo(r.get("manufacturer"), r.get("model")),
-            }
-            for c in ("patrimonio", "serial", "ip"):
-                if txt(r.get(c)) and not d[c]:
-                    descartes[c] += 1
-            linhas.append(d)
-    return sorted(linhas, key=lambda d: d["visto"]), descartes
+    texto = abrir(caminho).splitlines()
+    sep = ";" if texto and texto[0].count(";") > texto[0].count(",") else ","
+    leitor = csv.reader(texto, delimiter=sep)
+    cab = [COLUNAS.get(_norm(c)) for c in next(leitor)]
+    agora = datetime.now(FUSO)
+    for n, vals in enumerate(leitor, start=2):
+        r = {c: v for c, v in zip(cab, vals) if c}
+        quando = txt(r.get("ultimo_inventario"))
+        d = {
+            "linha": n,
+            "visto": datetime.strptime(quando, "%Y-%m-%d %H:%M:%S").replace(tzinfo=FUSO) if quando else agora,
+            "hostname": (txt(r.get("hostname")) or "").upper() or None,
+            "ip": ip_util(r.get("ip")),
+            "patrimonio": patrimonio(r.get("patrimonio")),
+            "serial": serial(r.get("serial")),
+            "localidade": txt(r.get("localidade")),
+            "mascara": ip_util(r.get("mascara")),
+            "gateway": ip_util(r.get("gateway")),
+            "modelo": modelo_completo(r["modelo_completo"]) if "modelo_completo" in r
+                      else modelo(r.get("manufacturer"), r.get("model")),
+        }
+        for c in ("patrimonio", "serial", "ip"):
+            if txt(r.get(c)) and not d[c]:
+                descartes[c] += 1
+        d["qualidade"] = qualidade(r, d["hostname"])
+        if nao_e_maquina(d, r):
+            descartes["servidor/máquina virtual (ignorada)"] += 1
+            continue
+        linhas.append(d)
+    # ordem de aplicação: a linha mais recente (ou, sem data, a de melhor qualidade) é aplicada por último e vence
+    return sorted(linhas, key=lambda d: (d["visto"], d["qualidade"])), descartes
 
 
 def main() -> None:
@@ -200,6 +275,8 @@ def main() -> None:
                     continue  # mantém a localidade padronizada que já existia
                 if c == "patrimonio" and eq.patrimonio:
                     continue  # mantém o formato já cadastrado
+                if c == "hostname" and eq.hostname and GENERICOS.match(d[c]) and not GENERICOS.match(eq.hostname):
+                    continue  # 'XXXX', 'DESKTOP-...' não substituem um nome de verdade
                 setattr(eq, c, d[c])
             eq.atualizado_em = d["visto"].astimezone(timezone.utc)
             visto_por_eq[eq.id] = d["visto"]

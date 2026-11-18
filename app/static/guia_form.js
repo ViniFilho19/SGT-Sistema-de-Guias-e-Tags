@@ -5,7 +5,7 @@
   if (!tabela || !botaoMais) return;
 
   var MAX_LINHAS = 200; // mesmo limite do schema (GuiaCreate.itens)
-  var CAMPOS = ["modelo", "serial", "hostname", "ip"];
+  var CAMPOS = ["patrimonio", "modelo", "serial", "hostname", "ip"];
   var timers = new WeakMap();
 
   var GRUPOS = { Celular: "celular", Chip: "chip" }; // demais tipos: "padrao" (mesmo mapa de web.py)
@@ -87,7 +87,7 @@
 
     var resumo = [d.hostname, d.modelo].filter(Boolean).join(" · ") || "equipamento cadastrado";
     var texto = document.createElement("span");
-    texto.textContent = "Cadastro: " + resumo;
+    texto.textContent = "Cadastro: " + resumo + (d.porSerial ? " (achado pelo nº de série)" : "");
     var botao = document.createElement("button");
     botao.type = "button";
     botao.className = "btn btn-ghost btn-sm ml-2 mt-1";
@@ -106,16 +106,21 @@
     var linha = input.closest("tr");
     var caixa = linha.querySelector(".sugestao");
     var valor = input.value.trim();
+    var nome = input.name; // "patrimonio" ou "serial"
     if (caixa) caixa.textContent = "";
-    if (!caixa || valor.length < 2) return;
-    fetch("/equipamentos/buscar?patrimonio=" + encodeURIComponent(valor), {
+    if (!caixa || valor.length < (nome === "serial" ? 5 : 2)) return;
+    if (nome === "serial" && campo(linha, "patrimonio").value.trim()) return; // com patrimônio, a busca é por ele
+    fetch("/equipamentos/buscar?" + nome + "=" + encodeURIComponent(valor), {
       credentials: "same-origin",
       headers: { Accept: "application/json" }
     })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         // ignora respostas antigas se o campo mudou enquanto a consulta rodava
-        if (d && d.encontrado && input.value.trim() === valor) oferecer(linha, caixa, d);
+        if (d && d.encontrado && input.value.trim() === valor) {
+          d.porSerial = nome === "serial";
+          oferecer(linha, caixa, d);
+        }
       })
       .catch(function () { /* sessão expirada ou rede fora: segue sem sugestão */ });
   }
@@ -126,16 +131,17 @@
   }
 
   tabela.addEventListener("input", function (e) {
-    if (e.target.matches("input[name=patrimonio]")) agendar(e.target, 400);
+    if (e.target.matches("input[name=patrimonio], input[name=serial]")) agendar(e.target, 400);
   });
   tabela.addEventListener("change", function (e) {
-    if (e.target.matches("input[name=patrimonio]")) agendar(e.target, 0);
+    if (e.target.matches("input[name=patrimonio], input[name=serial]")) agendar(e.target, 0);
     if (e.target.matches("select[name=tipo_equipamento]")) ajustarGrupo(e.target.closest("tr"));
   });
 
   // linhas que já vêm preenchidas (ex.: formulário reexibido após um erro)
   linhas().forEach(function (linha) {
-    var p = campo(linha, "patrimonio");
+    var p = campo(linha, "patrimonio"), s = campo(linha, "serial");
     if (p && p.value.trim()) consultar(p);
+    else if (s && s.value.trim()) consultar(s);
   });
 })();
