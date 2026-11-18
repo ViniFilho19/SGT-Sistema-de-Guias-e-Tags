@@ -21,15 +21,17 @@ from .pdf import pdf_mes, pdf_patrimonio
 from .planilha import planilha_mes, planilha_patrimonio
 from .routers.etiquetas import gerar_etiqueta, qr_data_uri, texto_qr
 from .routers.guias import criar as criar_guia, equipamento_por_patrimonio, equipamento_por_serial
-from .schemas import MOTIVOS, EtiquetaCreate, GuiaCreate, UserCreate
+from .schemas import MOTIVOS, EquipamentoIn, EtiquetaCreate, GuiaCreate, UserCreate
 from .security import (bloqueado, confere_senha, criar_token, hash_senha, limpar_falhas, registrar_falha,
                        usuario_por_token)
 
 COOKIE = "sessao"
 FUSO = ZoneInfo("America/Bahia")
 SD = "CTI - SERVICE DESK"
-TIPOS = ["Computador", "Monitor", "Teclado", "Mouse", "Switch", "Estabilizador", "Notebook", "Projetor", "Webcam",
-         "Celular", "Chip"]
+TIPOS = ["Computador", "Monitor", "Impressora", "Scanner", "Teclado", "Mouse", "Switch", "Estabilizador", "Notebook",
+         "Projetor", "Webcam", "Celular", "Chip"]
+TIPOS_CADASTRO = ["Computador", "Monitor", "Impressora", "Celular", "Webcam", "Scanner"]
+TIPOS_SALVAR_GUIA = {"Monitor", "Impressora", "Celular", "Scanner"}
 GRUPO_TIPO = {"Celular": "celular", "Chip": "chip"}  # tipos com campos próprios na guia (os demais: "padrao")
 # campos de cada grupo no formulário: nome do input -> campo gravado no item
 CAMPOS_GRUPO = {
@@ -263,21 +265,28 @@ CAMPOS_CADASTRO = {"tipo_equipamento": ("tipo", "Tipo"), "modelo": ("modelo", "M
 
 
 def _divergencias(db: Session, itens) -> list[dict]:
-    """Compara cada equipamento da guia com o cadastro (pelo patrimônio) e lista o que foi digitado diferente."""
+    """Compara cada equipamento da guia com o cadastro (pelo patrimônio ou nº de série) e lista o que foi digitado diferente."""
     res, vistos = [], set()
     for item in itens:
-        eq = equipamento_por_patrimonio(db, item.patrimonio)
+        ser = item.serial or item.imei
+        eq = equipamento_por_patrimonio(db, item.patrimonio) or (
+            None if item.patrimonio else equipamento_por_serial(db, ser))
         if not eq or eq.id in vistos:
             continue
         vistos.add(eq.id)
         mudancas = []
         for campo, (attr, rotulo) in CAMPOS_CADASTRO.items():
-            novo = (getattr(item, campo) or "").strip()
+            if campo == "modelo" and item.tipo_equipamento == "Celular":
+                novo = " ".join(p for p in ((item.marca or "").strip(), (item.modelo or "").strip()) if p)
+            elif campo == "serial" and item.tipo_equipamento == "Celular":
+                novo = (item.imei or item.serial or "").strip()
+            else:
+                novo = (getattr(item, campo) or "").strip()
             atual = (getattr(eq, attr) or "").strip()
             if novo and novo.casefold() != atual.casefold():
                 mudancas.append({"attr": attr, "rotulo": rotulo, "atual": atual, "novo": novo})
         if mudancas:
-            res.append({"eq": eq, "patrimonio": eq.patrimonio, "mudancas": mudancas})
+            res.append({"eq": eq, "patrimonio": eq.patrimonio or f"Série {eq.serial}", "mudancas": mudancas})
     return res
 
 
@@ -855,6 +864,107 @@ def equipamento_buscar(patrimonio: str = "", serial: str = "", db: Session = Dep
             "mascara": eq.mascara or "", "gateway": eq.gateway or "", "patrimonio": eq.patrimonio or ""}
 
 
+def _salvar_ou_atualizar_equipamento(db: Session, dados: EquipamentoIn) -> tuple[Equipamento, bool]:
+    """Cria ou atualiza um equipamento no banco a partir do patrimônio (ou nº de série, quando não tem patrimônio)."""
+    eq = None
+    if dados.patrimonio:
+        eq = equipamento_por_patrimonio(db, dados.patrimonio)
+    elif dados.serial:
+        eq = equipamento_por_serial(db, dados.serial)
+    criado = eq is None
+    if eq:
+        for campo, valor in dados.model_dump().items():
+            if valor is None:
+                continue
+            if campo == "patrimonio" and eq.patrimonio:
+                continue
+            setattr(eq, campo, valor)
+        eq.atualizado_em = datetime.now(timezone.utc)
+    else:
+        eq = Equipamento(**dados.model_dump())
+        db.add(eq)
+    db.commit()
+    db.refresh(eq)
+    return eq, criado
+
+
+def _validar_cadastro_eq(tipo: str, v: dict) -> tuple[Optional[EquipamentoIn], Optional[str]]:
+    """Valida os campos obrigatórios de cada tipo de equipamento para cadastro manual ou pela guia."""
+    if tipo not in TIPOS_CADASTRO:
+        return None, "Tipo de equipamento inválido para cadastro."
+    if tipo == "Computador":
+        try:
+            etq = EtiquetaCreate(hostname=v.get("hostname", ""), ip=v.get("ip", ""), patrimonio=v.get("patrimonio", ""),
+                                 serial=v.get("serial", ""), localidade=v.get("localidade", ""),
+                                 mascara=v.get("mascara", ""), gateway=v.get("gateway", ""))
+            return EquipamentoIn(tipo="Computador", **etq.model_dump()), None
+        except ValidationError as e:
+            campos = sorted({str(x["loc"][0]) for x in e.errors()})
+            return None, "Verifique os campos: " + ", ".join(campos)
+
+    modelo = (v.get("modelo") or "").strip()
+    patrimonio = (v.get("patrimonio") or "").strip()
+    serial = (v.get("serial") or "").strip()
+    ip = (v.get("ip") or "").strip()
+
+    if not modelo:
+        return None, "Informe a Marca/Modelo."
+    if tipo in ("Monitor", "Celular") and not serial:
+        return None, "Informe o Número de série / IMEI." if tipo == "Celular" else "Informe o Número de série."
+    if tipo in ("Impressora", "Webcam", "Scanner") and not patrimonio:
+        return None, "Informe o Patrimônio."
+    if tipo == "Impressora" and not ip:
+        return None, "Informe o endereço IP da impressora."
+
+    try:
+        dados = EquipamentoIn(
+            tipo=tipo,
+            modelo=modelo,
+            patrimonio=patrimonio if tipo in ("Impressora", "Webcam", "Scanner") else (patrimonio or None),
+            serial=serial if tipo in ("Monitor", "Celular") else (serial or None),
+            ip=ip if tipo == "Impressora" else None,
+        )
+        return dados, None
+    except ValidationError:
+        return None, "Endereço IP inválido ou texto longo demais."
+
+
+@router.post("/equipamentos/salvar-rapido")
+async def equipamento_salvar_rapido(request: Request, db: Session = Depends(get_db),
+                                    user: User = Depends(usuario_web)):
+    """Usada pelo botão 'Salvar' na tela Nova Guia para registrar Impressora, Monitor, Celular ou Scanner."""
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Requisição inválida")
+    tipo = str(body.get("tipo") or "").strip()
+    if tipo not in TIPOS_SALVAR_GUIA:
+        return Response(json.dumps({"ok": False, "erro": f"O tipo {tipo} não possui salvamento rápido por aqui."}),
+                        status_code=422, media_type="application/json")
+    if tipo == "Celular":
+        marca = str(body.get("marca") or "").strip()
+        mod_cel = str(body.get("modelo_cel") or body.get("modelo") or "").strip()
+        if marca and mod_cel and not mod_cel.lower().startswith(marca.lower()):
+            modelo = f"{marca} {mod_cel}".strip()
+        else:
+            modelo = mod_cel or marca
+        serial = str(body.get("imei") or body.get("serial") or "").strip()
+        v = {"modelo": modelo, "serial": serial}
+    else:
+        v = {
+            "modelo": str(body.get("modelo") or "").strip(),
+            "patrimonio": str(body.get("patrimonio") or "").strip(),
+            "serial": str(body.get("serial") or "").strip(),
+            "ip": str(body.get("ip") or "").strip(),
+        }
+    dados, erro = _validar_cadastro_eq(tipo, v)
+    if erro or not dados:
+        return Response(json.dumps({"ok": False, "erro": erro}), status_code=422, media_type="application/json")
+    eq, criado = _salvar_ou_atualizar_equipamento(db, dados)
+    return {"ok": True, "criado": criado, "id": eq.id, "tipo": eq.tipo, "modelo": eq.modelo or "",
+            "patrimonio": eq.patrimonio or "", "serial": eq.serial or "", "ip": eq.ip or ""}
+
+
 def _vazio_por_ultimo(col):
     return or_(col.is_(None), col == "")  # False (0) antes de True (1): vazios vão para o fim
 
@@ -871,20 +981,50 @@ ORDENS = {  # valor -> (rótulo, ordenação)
     "local_az": ("Localidade (A → Z)", (_vazio_por_ultimo(E.localidade), func.lower(E.localidade), func.lower(E.hostname))),
 }
 LIMITE_EQ = 200
+CAMPOS_FORM_EQ = ("tipo", "modelo", "patrimonio", "serial", "hostname", "ip", "localidade", "mascara", "gateway")
 
 
-@router.get("/equipamentos")
-def equipamentos(request: Request, q: str = "", ordem: str = "novos", db: Session = Depends(get_db),
-                 user: User = Depends(usuario_web)):
+def _equipamentos_pagina(request: Request, db: Session, user: User, q: str = "", ordem: str = "novos",
+                         v: Optional[dict] = None, erro: Optional[str] = None, ok: Optional[str] = None,
+                         abrir_modal: bool = False, status: int = 200):
     ordem = ordem if ordem in ORDENS else "novos"
     filtro = true()
     if q.strip():
         like = f"%{q.strip()[:100]}%"
         filtro = or_(E.patrimonio.ilike(like), E.serial.ilike(like), E.hostname.ilike(like), E.ip.ilike(like),
-                     E.localidade.ilike(like), E.modelo.ilike(like))
+                     E.localidade.ilike(like), E.modelo.ilike(like), E.tipo.ilike(like))
     itens = db.scalars(select(E).where(filtro).order_by(*ORDENS[ordem][1]).limit(LIMITE_EQ)).all()
     for e in itens:
         e.cadastro = hora_local(e.criado_em, "%d/%m/%Y") if e.criado_em else ""
     total = db.scalar(select(func.count(E.id)).where(filtro))
-    return pagina(request, "equipamentos.html", user, itens=itens, q=q, ordem=ordem, total=total, limite=LIMITE_EQ,
-                  ordens=[(k, v[0]) for k, v in ORDENS.items()])
+    v = v or ({c: "" for c in CAMPOS_FORM_EQ} | {"tipo": "Computador"})
+    return pagina(request, "equipamentos.html", user, status, itens=itens, q=q, ordem=ordem, total=total,
+                  limite=LIMITE_EQ, ordens=[(k, val[0]) for k, val in ORDENS.items()],
+                  tipos_cadastro=TIPOS_CADASTRO, v=v, erro=erro, ok=ok, abrir_modal=abrir_modal)
+
+
+@router.get("/equipamentos")
+def equipamentos(request: Request, q: str = "", ordem: str = "novos", ok: str = "", db: Session = Depends(get_db),
+                 user: User = Depends(usuario_web)):
+    msg_ok = {"criado": "Equipamento cadastrado com sucesso.",
+              "atualizado": "Equipamento já existia e foi atualizado com sucesso."}.get(ok)
+    return _equipamentos_pagina(request, db, user, q=q, ordem=ordem, ok=msg_ok)
+
+
+@router.post("/equipamentos/cadastrar")
+def equipamento_cadastrar(request: Request, tipo: str = Form("Computador"), modelo: str = Form(""),
+                          patrimonio: str = Form(""), serial: str = Form(""), hostname: str = Form(""),
+                          ip: str = Form(""), localidade: str = Form(""), mascara: str = Form(""),
+                          gateway: str = Form(""), ip_modo: str = Form("fixo"),
+                          db: Session = Depends(get_db), user: User = Depends(usuario_web)):
+    if tipo == "Computador":
+        ip_final = SEM_IP_FIXO.get(ip_modo, ip)
+    else:
+        ip_final = ip
+    v = dict(tipo=tipo, modelo=modelo, patrimonio=patrimonio, serial=serial, hostname=hostname,
+             ip=ip_final, localidade=localidade, mascara=mascara, gateway=gateway)
+    dados, erro = _validar_cadastro_eq(tipo, v)
+    if erro or not dados:
+        return _equipamentos_pagina(request, db, user, v=v, erro=erro, abrir_modal=True, status=422)
+    _, criado = _salvar_ou_atualizar_equipamento(db, dados)
+    return RedirectResponse("/equipamentos?ok=" + ("criado" if criado else "atualizado"), 303)

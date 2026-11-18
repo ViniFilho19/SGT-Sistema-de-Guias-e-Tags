@@ -47,7 +47,7 @@
 
   <section class="card">
     <h2 class="section-title flex items-center gap-2"><span class="grid size-6 place-items-center rounded-full bg-brand-700 text-xs font-bold text-white">2</span>Equipamentos</h2>
-    <p class="mt-1 mb-5 text-sm text-slate-500">Uma linha por equipamento; linhas vazias são ignoradas. Ao digitar um patrimônio ou nº de série já cadastrado, o sistema oferece preencher o restante. Para <b>Celular</b> os campos são marca, modelo e IMEI; para <b>Chip</b>, DDD, linha e nº de série.</p>
+    <p class="mt-1 mb-5 text-sm text-slate-500">Uma linha por equipamento; linhas vazias são ignoradas. Ao digitar um patrimônio ou nº de série/IMEI já cadastrado, o sistema oferece preencher o restante automaticamente. Para <b>Impressora, Monitor, Celular e Scanner</b> você também pode clicar em <b>Salvar</b> na linha para cadastrar o equipamento no banco.</p>
     <div class="-mx-6 overflow-x-auto border-y border-slate-100"><table id="tabela-equipamentos" class="tabela tabela-input min-w-[900px]">
       <tr><th class="w-40">Tipo</th><th>Modelo/Marca</th><th>Patrimônio</th><th>Nº série</th><th>Hostname</th><th>IP</th><th class="w-20"></th></tr>
       {% for l in linhas %}<tr class="linha-eq align-top" data-grupo="{{ l.grupo }}">
@@ -59,14 +59,21 @@
           <div class="sugestao mt-1 text-xs leading-snug text-slate-500"></div></div>
           <div data-g="celular"><small>Modelo</small><input name="modelo_cel" value="{{ l.modelo_cel }}" aria-label="Modelo do celular"></div>
           <div data-g="chip"><small>Linha</small><input name="linha" value="{{ l.linha }}" inputmode="tel" aria-label="Número da linha"></div></td>
-        <td><div data-g="padrao"><input name="serial" value="{{ l.serial }}" aria-label="Nº série"></div>
-          <div data-g="celular"><small>IMEI</small><input name="imei" value="{{ l.imei }}" inputmode="numeric" aria-label="IMEI"></div>
+        <td><div data-g="padrao"><input name="serial" value="{{ l.serial }}" autocomplete="off" aria-label="Nº série">
+          <div class="sugestao-serial mt-1 text-xs leading-snug text-slate-500"></div></div>
+          <div data-g="celular"><small>Nº série / IMEI</small><input name="imei" value="{{ l.imei }}" autocomplete="off" aria-label="IMEI">
+          <div class="sugestao-imei mt-1 text-xs leading-snug text-slate-500"></div></div>
           <div data-g="chip"><small>Nº de série do chip</small><input name="serial_chip" value="{{ l.serial_chip }}" aria-label="Número de série do chip"></div></td>
         <td><div data-g="padrao"><input name="hostname" value="{{ l.hostname }}" aria-label="Hostname"></div></td>
         <td><div data-g="padrao"><input name="ip" value="{{ l.ip }}" inputmode="decimal" aria-label="IP"></div></td>
         <td class="whitespace-nowrap">
-          <button type="button" class="btn btn-ghost btn-icon" data-acao="limpar" title="Limpar linha" aria-label="Limpar linha">{{ icone("limpar", "size-4") }}</button>
-          <button type="button" class="btn btn-ghost btn-icon hover:text-red-600" data-acao="apagar" title="Apagar linha" aria-label="Apagar linha">{{ icone("lixo", "size-4") }}</button></td></tr>{% endfor %}
+          <div class="flex items-center gap-1">
+            <button type="button" class="btn btn-sm" data-acao="salvar" title="Salvar equipamento no banco" {{ 'hidden' if l.tipo_equipamento not in ('Monitor', 'Impressora', 'Celular', 'Scanner') }}>{{ icone("salvar", "size-3.5") }}<span>Salvar</span></button>
+            <button type="button" class="btn btn-ghost btn-icon" data-acao="limpar" title="Limpar linha" aria-label="Limpar linha">{{ icone("limpar", "size-4") }}</button>
+            <button type="button" class="btn btn-ghost btn-icon hover:text-red-600" data-acao="apagar" title="Apagar linha" aria-label="Apagar linha">{{ icone("lixo", "size-4") }}</button>
+          </div>
+          <div class="aviso-salvar mt-1 text-xs leading-snug"></div>
+        </td></tr>{% endfor %}
     </table></div>
     <button type="button" class="btn btn-ghost mt-4" id="add-linha" title="Adicionar mais um equipamento">{{ icone("mais", "size-4") }}Adicionar equipamento</button>
   </section>

@@ -1,19 +1,25 @@
-{% extends "base.html" %}{% from "_icones.html" import icone, cabecalho %}
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}{% from "_guias.html" import datalist_localidades with context %}
 {% block title %}Equipamentos{% endblock %}
 {% block content %}
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
   {{ cabecalho("Equipamentos", "Cadastro de equipamentos com etiqueta ou guia emitida.") }}
-  <form method="get" class="flex w-full flex-wrap gap-2 sm:w-auto" role="search">
-    <div class="relative min-w-60 flex-1 sm:w-80">
-      <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">{{ icone("buscar", "size-4") }}</span>
-      <input name="q" value="{{ q }}" placeholder="Patrimônio, série, hostname, IP ou localidade" class="pl-9" aria-label="Buscar equipamento">
-    </div>
-    <select name="ordem" class="w-auto" aria-label="Ordenar por" data-auto-enviar>
-      {% for valor, rotulo in ordens %}<option value="{{ valor }}" {{ "selected" if ordem == valor }}>{{ rotulo }}</option>{% endfor %}
-    </select>
-    <button class="btn">Buscar</button>
-  </form>
+  <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+    <form method="get" class="flex flex-1 flex-wrap gap-2 sm:w-auto" role="search">
+      <div class="relative min-w-60 flex-1 sm:w-80">
+        <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">{{ icone("buscar", "size-4") }}</span>
+        <input name="q" value="{{ q }}" placeholder="Patrimônio, série, hostname, IP ou localidade" class="pl-9" aria-label="Buscar equipamento">
+      </div>
+      <select name="ordem" class="w-auto" aria-label="Ordenar por" data-auto-enviar>
+        {% for valor, rotulo in ordens %}<option value="{{ valor }}" {{ "selected" if ordem == valor }}>{{ rotulo }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-ghost">Buscar</button>
+    </form>
+    <button type="button" class="btn" id="btn-abrir-cadastro">{{ icone("mais", "size-4") }}Cadastrar equipamento</button>
+  </div>
 </div>
+
+{{ alertas(None if abrir_modal else erro, ok) }}
+
 <p class="mb-3 text-sm text-slate-500">{{ "{:,}".format(total).replace(",", ".") }} equipamento{{ "s" if total != 1 }}{% if q %} para “{{ q }}”{% endif %}{% if total > limite %} — mostrando os {{ limite }} primeiros; use a busca para achar os demais{% endif %}.</p>
 <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
   <tr><th>Tipo</th><th>Modelo</th><th>Patrimônio</th><th>Nº série</th><th>Hostname</th><th>IP</th><th>Localidade</th><th>Cadastro</th></tr>
@@ -25,4 +31,95 @@
     <span class="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400">{{ icone("buscar", "size-6") }}</span>
     Nenhum equipamento encontrado{% if q %} para “{{ q }}”. <a href="/equipamentos?ordem={{ ordem }}" class="font-medium text-brand-700 hover:underline">Limpar busca</a>{% else %}.{% endif %}</td></tr>{% endfor %}
 </table></div></div>
+
+{# Modal de cadastro de equipamento #}
+<dialog id="dlg-equipamento" class="bg-card text-slate-700 m-auto w-[calc(100%-2rem)] max-w-2xl rounded-2xl p-0 shadow-2xl backdrop:bg-slate-900/50"
+        aria-labelledby="dlg-eq-titulo" {{ 'data-abrir="1"'|safe if abrir_modal }}>
+  <form method="post" action="/equipamentos/cadastrar" class="space-y-4 p-6" id="form-equipamento">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 id="dlg-eq-titulo" class="section-title flex items-center gap-2">{{ icone("equipamento", "size-5 text-brand-600") }}Cadastrar equipamento</h2>
+        <p class="page-sub">Escolha o tipo de equipamento e preencha os dados para registrá-lo no banco.</p>
+      </div>
+      <button type="button" class="btn btn-ghost btn-icon" id="btn-fechar-cadastro" aria-label="Fechar">{{ icone("fechar", "size-4") }}</button>
+    </div>
+
+    {% if abrir_modal and erro %}{{ alertas(erro, None) }}{% endif %}
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="sm:col-span-2">Tipo de equipamento
+        <select name="tipo" id="sel-tipo-eq">
+          {% for t in tipos_cadastro %}<option value="{{ t }}" {{ "selected" if v.tipo == t }}>{{ t }}</option>{% endfor %}
+        </select>
+      </label>
+
+      {# Marca/Modelo: Monitor, Impressora, Celular, Webcam, Scanner #}
+      <label class="sm:col-span-2" data-campo-eq="Monitor,Impressora,Celular,Webcam,Scanner">
+        Marca/Modelo
+        <input name="modelo" value="{{ v.modelo }}" placeholder="Ex.: Dell P2419H, HP LaserJet, Samsung A54...">
+      </label>
+
+      {# Patrimônio: Computador, Impressora, Webcam, Scanner #}
+      <div class="sm:col-span-2" data-campo-eq="Computador,Impressora,Webcam,Scanner" id="busca-etiqueta">
+        <label>Patrimônio
+          <input name="patrimonio" value="{{ v.patrimonio }}" autocomplete="off"
+                 placeholder="Digite o patrimônio: se já estiver cadastrado, os dados são sugeridos">
+        </label>
+        <div class="sugestao mt-1.5 text-xs leading-snug text-slate-500" aria-live="polite"></div>
+      </div>
+
+      {# Hostname: Computador #}
+      <label class="sm:col-span-2" data-campo-eq="Computador">
+        Hostname
+        <input name="hostname" value="{{ v.hostname }}">
+      </label>
+
+      {# IP: Computador (com DHCP/Wi-Fi) e Impressora (IP fixo) #}
+      {% set ipu = (v.ip or "")|upper %}{% set modo = "dhcp" if ipu == "DHCP" else ("wifi" if ipu == "WIFI" else "fixo") %}
+      <fieldset class="sm:col-span-2" data-campo-eq="Computador,Impressora" data-ip-modo>
+        <legend class="mb-1.5 text-sm font-medium text-slate-700">Endereço IP <span class="text-xs font-normal text-slate-400" data-so-pc>máquinas sem IP fixo: marque DHCP ou Wi-Fi</span></legend>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex flex-wrap gap-2" data-so-pc>
+            {% for valor, texto in [("fixo", "IP fixo"), ("dhcp", "DHCP"), ("wifi", "Wi-Fi")] %}
+            <label class="flex-row items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 has-checked:border-brand-500 has-checked:bg-brand-50 has-checked:text-brand-700 cursor-pointer">
+              <input type="radio" name="ip_modo" value="{{ valor }}" class="w-auto" {{ "checked" if modo == valor }}>{{ texto }}</label>
+            {% endfor %}
+          </div>
+          <input name="ip" value="{{ v.ip if modo == 'fixo' }}" class="min-w-36 flex-1" inputmode="decimal" placeholder="10.0.0.1" aria-label="Endereço IP">
+        </div>
+      </fieldset>
+
+      {# Número de série / IMEI: Computador, Monitor, Celular #}
+      <div class="sm:col-span-2" data-campo-eq="Computador,Monitor,Celular">
+        <label><span id="rotulo-serial">Número de série</span>
+          <input name="serial" value="{{ v.serial }}" autocomplete="off">
+        </label>
+      </div>
+
+      {# Localidade: Computador #}
+      <label class="sm:col-span-2" data-campo-eq="Computador">
+        Localidade
+        <input name="localidade" value="{{ v.localidade }}" list="lista-localidades" autocomplete="off" placeholder="Comece a digitar para ver as sugestões">
+      </label>
+
+      {# Máscara e Gateway: Computador #}
+      <label data-campo-eq="Computador">
+        Máscara de sub-rede <span class="text-xs font-normal text-slate-400">opcional</span>
+        <input name="mascara" value="{{ v.mascara }}" inputmode="decimal">
+      </label>
+      <label data-campo-eq="Computador">
+        Gateway padrão <span class="text-xs font-normal text-slate-400">opcional</span>
+        <input name="gateway" value="{{ v.gateway }}" inputmode="decimal">
+      </label>
+    </div>
+
+    <div class="flex justify-end gap-2 pt-3">
+      <button type="button" class="btn btn-ghost" id="btn-cancelar-cadastro">Cancelar</button>
+      <button class="btn">{{ icone("salvar", "size-4") }}Salvar equipamento</button>
+    </div>
+  </form>
+</dialog>
+
+{{ datalist_localidades() }}
+<script src="{{ static_url('etiqueta_form.js') }}"></script>
 {% endblock %}

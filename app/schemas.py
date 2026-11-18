@@ -59,7 +59,15 @@ class EquipamentoIn(Base):
     gateway: Optional[str] = Field(default=None, max_length=45)
     localidade: Optional[str] = Field(default=None, max_length=200)
 
-    _ips = field_validator("ip", "mascara", "gateway")(_checa_ip)
+    _ips = field_validator("mascara", "gateway")(_checa_ip)
+
+    @field_validator("ip")
+    @classmethod
+    def _ip_ou_dhcp(cls, v):
+        if v is None:
+            return None
+        t = v.strip().upper().replace("-", "")
+        return t if t in ("DHCP", "WIFI") else _checa_ip(v)
 
 
 class EquipamentoOut(EquipamentoIn):
@@ -118,7 +126,13 @@ class GuiaItemIn(Base):
     ddd: Optional[str] = Field(default=None, max_length=5)
     linha: Optional[str] = Field(default=None, max_length=30)
 
-    _ips = field_validator("ip")(_checa_ip)
+    @field_validator("ip")
+    @classmethod
+    def _ip_ou_dhcp(cls, v):
+        if v is None:
+            return None
+        t = v.strip().upper().replace("-", "")
+        return t if t in ("DHCP", "WIFI") else _checa_ip(v)
 
 
 class GuiaItemOut(GuiaItemIn):

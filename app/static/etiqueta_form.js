@@ -1,10 +1,74 @@
-/* Tela "Etiquetas": ao digitar um patrimônio ou nº de série já cadastrado, OFERECE preencher os demais campos
-   com os dados do cadastro (só preenche quando o usuário clica). */
+/* Tela "Etiquetas" e modal "Cadastrar equipamento": ao digitar um patrimônio ou nº de série já cadastrado,
+   OFERECE preencher os demais campos com os dados do cadastro. */
 (function () {
-  // IP fixo / DHCP / Wi-Fi: sem IP fixo, o campo de endereço fica desligado
+  // ---------- Modal de cadastro de equipamento (aba Equipamentos) ----------
+  var dlgEq = document.getElementById("dlg-equipamento");
+  var btnAbrirEq = document.getElementById("btn-abrir-cadastro");
+  var btnFecharEq = document.getElementById("btn-fechar-cadastro");
+  var btnCancelarEq = document.getElementById("btn-cancelar-cadastro");
+  var selTipoEq = document.getElementById("sel-tipo-eq");
+
+  function ajustarCamposEquipamento() {
+    if (!dlgEq || !selTipoEq) return;
+    var tipo = selTipoEq.value;
+    var rotuloSerial = document.getElementById("rotulo-serial");
+    if (rotuloSerial) {
+      rotuloSerial.textContent = tipo === "Celular" ? "Número de série / IMEI" : "Número de série";
+    }
+    dlgEq.querySelectorAll("[data-so-pc]").forEach(function (el) {
+      el.hidden = tipo !== "Computador";
+    });
+    if (tipo !== "Computador") {
+      var fixo = dlgEq.querySelector("[name=ip_modo][value=fixo]");
+      if (fixo && !fixo.checked) {
+        fixo.checked = true;
+        fixo.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+    dlgEq.querySelectorAll("[data-campo-eq]").forEach(function (bloco) {
+      var tipos = bloco.getAttribute("data-campo-eq").split(",");
+      var visivel = tipos.indexOf(tipo) >= 0;
+      bloco.hidden = !visivel;
+      bloco.querySelectorAll("input, select").forEach(function (inp) {
+        if (inp.name === "ip_modo") return;
+        inp.disabled = !visivel;
+        if (!visivel) {
+          inp.required = false;
+        } else if (inp.name === "mascara" || inp.name === "gateway") {
+          inp.required = false;
+        } else if (inp.name === "ip") {
+          var marcado = dlgEq.querySelector("[name=ip_modo]:checked");
+          var ehFixo = tipo !== "Computador" || !marcado || marcado.value === "fixo";
+          inp.disabled = !ehFixo;
+          inp.required = ehFixo;
+        } else {
+          inp.required = true;
+        }
+      });
+    });
+  }
+
+  if (dlgEq && selTipoEq) {
+    selTipoEq.addEventListener("change", ajustarCamposEquipamento);
+    ajustarCamposEquipamento();
+    if (btnAbrirEq) {
+      btnAbrirEq.addEventListener("click", function () {
+        dlgEq.showModal();
+        ajustarCamposEquipamento();
+      });
+    }
+    if (btnFecharEq) btnFecharEq.addEventListener("click", function () { dlgEq.close(); });
+    if (btnCancelarEq) btnCancelarEq.addEventListener("click", function () { dlgEq.close(); });
+    if (dlgEq.hasAttribute("data-abrir")) {
+      dlgEq.showModal();
+    }
+  }
+
+  // ---------- IP fixo / DHCP / Wi-Fi ----------
   document.querySelectorAll("[data-ip-modo]").forEach(function (grupo) {
     var ip = grupo.querySelector("[name=ip]");
     function sincronizar() {
+      if (grupo.hidden) return;
       var marcado = grupo.querySelector("[name=ip_modo]:checked");
       var fixo = !marcado || marcado.value === "fixo";
       ip.disabled = !fixo;
@@ -19,14 +83,15 @@
   if (!bloco) return;
   var form = bloco.closest("form");
   var caixa = bloco.querySelector(".sugestao");
-  var CAMPOS = { patrimonio: "Patrimônio", hostname: "Hostname", ip: "IP", serial: "Nº de série",
-                 localidade: "Localidade", mascara: "Máscara", gateway: "Gateway" };
+  var CAMPOS = { patrimonio: "Patrimônio", modelo: "Marca/Modelo", hostname: "Hostname", ip: "IP",
+                 serial: "Nº de série", localidade: "Localidade", mascara: "Máscara", gateway: "Gateway" };
   var SEM_IP = { DHCP: "dhcp", WIFI: "wifi" };
   var timer = null;
 
   function campo(nome) { return form.querySelector("[name=" + nome + "]"); }
 
   function aviso(texto, classe) {
+    if (!caixa) return;
     caixa.textContent = "";
     var s = document.createElement("span");
     s.textContent = texto;
@@ -50,10 +115,12 @@
       if (m && m.value !== "fixo") return m.value === "dhcp" ? "DHCP" : "WIFI";
     }
     var el = campo(nome);
-    return el ? el.value.trim() : "";
+    return el && !el.disabled ? el.value.trim() : "";
   }
 
   function escrever(nome, v) {
+    var el = campo(nome);
+    if (!el || el.disabled) return;
     if (nome === "ip" && SEM_IP[String(v).toUpperCase()]) {
       var op = form.querySelector("[name=ip_modo][value=" + SEM_IP[String(v).toUpperCase()] + "]");
       if (op) { op.checked = true; op.dispatchEvent(new Event("change", { bubbles: true })); }
@@ -63,7 +130,7 @@
       var fixo = form.querySelector("[name=ip_modo][value=fixo]");
       if (fixo && !fixo.checked) { fixo.checked = true; fixo.dispatchEvent(new Event("change", { bubbles: true })); }
     }
-    campo(nome).value = v;
+    el.value = v;
   }
 
   // '34561' e '034561' são o mesmo patrimônio; maiúsculas não contam
@@ -75,12 +142,13 @@
   function mostrar(d, porSerial) {
     var vazios = [], diferentes = [];
     Object.keys(CAMPOS).forEach(function (n) {
-      if (!campo(n) || !d[n]) return;
+      var el = campo(n);
+      if (!el || el.disabled || !d[n]) return;
       var atual = valor(n);
       if (!atual) vazios.push(n);
       else if (comparavel(n, atual) !== comparavel(n, d[n])) diferentes.push(n);
     });
-    var resumo = [d.hostname, d.modelo].filter(Boolean).join(" · ") || "equipamento cadastrado";
+    var resumo = [d.hostname, d.modelo, d.tipo].filter(Boolean).join(" · ") || "equipamento cadastrado";
     aviso("Encontrado no cadastro" + (porSerial ? " pelo nº de série" : "") + ": " + resumo + ".",
           "font-medium text-emerald-700");
     if (!vazios.length && !diferentes.length) {
@@ -112,9 +180,11 @@
   }
 
   function consultar(nome) {
-    var v = campo(nome).value.trim();
+    var el = campo(nome);
+    if (!el || el.disabled || !caixa) return;
+    var v = el.value.trim();
     caixa.textContent = "";
-    if (v.length < (nome === "serial" ? 5 : 3)) return;
+    if (v.length < (nome === "serial" ? 3 : 2)) return;
     aviso("Procurando no cadastro…");
     fetch("/equipamentos/buscar?" + nome + "=" + encodeURIComponent(v), {
       credentials: "same-origin", headers: { Accept: "application/json" }

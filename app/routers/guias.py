@@ -28,7 +28,7 @@ def equipamento_por_patrimonio(db: Session, patrimonio: Optional[str]) -> Option
 def equipamento_por_serial(db: Session, serial: Optional[str]) -> Optional[Equipamento]:
     """Acha o equipamento pelo nº de série, ignorando espaços, hífens, barras, pontos e maiúsculas."""
     ns = re.sub(r"[^0-9A-Z]", "", (serial or "").upper())[:100]
-    if len(ns) < 5:
+    if len(ns) < 3:
         return None
     col = Equipamento.serial
     for ch in (" ", "-", "/", "."):
@@ -42,9 +42,10 @@ def criar(dados: GuiaCreate, db: Session = Depends(get_db), user: User = Depends
     if guia.tipo.startswith("GUIA DE SAÍDA"):  # saída comum ou desfazimento
         guia.status = "pronta"
     for item in dados.itens:
-        # liga ao cadastro quando o patrimônio (ou, sem patrimônio, o nº de série) já existe
+        # liga ao cadastro quando o patrimônio (ou, sem patrimônio, o nº de série/IMEI) já existe
+        ser = item.serial or item.imei
         eq = equipamento_por_patrimonio(db, item.patrimonio) or (
-            None if item.patrimonio else equipamento_por_serial(db, item.serial))
+            None if item.patrimonio else equipamento_por_serial(db, ser))
         guia.itens.append(GuiaItem(**item.model_dump(), equipamento_id=eq.id if eq else None))
     db.add(guia)
     db.commit()
