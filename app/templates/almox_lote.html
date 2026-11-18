@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}{% import "_almox.html" as ax %}
+{% block title %}Entrada em lote{% endblock %}
+{% block content %}
+<a href="/almoxarifado" class="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800">{{ icone("voltar", "size-4") }}Almoxarifado</a>
+<div class="mb-6">{{ cabecalho("Entrada em lote com nota fiscal", "Várias peças de uma mesma nota. Com nº de série, cada unidade fica registrada no extrato.") }}</div>
+{{ alertas(erro) }}
+{% if not pecas %}
+<div class="card text-sm text-slate-600">Cadastre as peças no catálogo antes de dar entrada. <a class="font-medium text-brand-700 hover:underline" href="/almoxarifado/pecas/nova">Nova peça</a></div>
+{% else %}
+<form method="post" enctype="multipart/form-data" class="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+  <section class="card space-y-4 self-start">
+    <h2 class="section-title">Nota fiscal</h2>
+    {{ ax.campos_nf(v, obrigatoria=True) }}
+    <label>Observações<input name="observacoes" value="{{ v.observacoes }}" maxlength="500"></label>
+  </section>
+  <section class="card space-y-4 p-0">
+    <div class="px-6 pt-5"><h2 class="section-title">Cesta de itens</h2>
+      <p class="page-sub">Nº de série separados por vírgula. Sem quantidade, conta-se um por nº de série.</p></div>
+    <div class="overflow-x-auto"><table class="tabela tabela-input" id="cesta">
+      <tr><th>Peça</th><th class="w-24">Qtd.</th><th>Nºs de série</th><th></th></tr>
+      {% for it in itens %}
+      <tr data-item>
+        <td class="min-w-56"><select name="peca_id" aria-label="Peça">
+          <option value="">Escolha…</option>
+          {% for p in pecas %}<option value="{{ p.id }}" {{ "selected" if it.peca_id == p.id|string }}>{{ p.categoria.icone }} {{ p.descricao }}{{ " · " ~ p.marca if p.marca }}{{ " · " ~ p.modelo if p.modelo }} (saldo {{ p.quantidade }})</option>{% endfor %}
+        </select></td>
+        <td><input type="number" name="quantidade" value="{{ it.quantidade }}" min="1" max="100000" aria-label="Quantidade"></td>
+        <td class="min-w-56"><input name="seriais" value="{{ it.seriais }}" placeholder="SN001, SN002…" class="uppercase" aria-label="Números de série"></td>
+        <td><button type="button" class="btn btn-ghost btn-icon" data-remover-item title="Remover linha" aria-label="Remover linha">{{ icone("fechar", "size-4") }}</button></td>
+      </tr>
+      {% endfor %}
+    </table></div>
+    <div class="flex flex-wrap justify-between gap-2 px-6 pb-6">
+      <button type="button" class="btn btn-ghost" data-mais-item>{{ icone("mais", "size-4") }}Adicionar linha</button>
+      <button class="btn">{{ icone("salvar", "size-4") }}Registrar entrada</button>
+    </div>
+  </section>
+</form>
+{% endif %}
+<script src="{{ static_url('almoxarifado.js') }}"></script>
+{% endblock %}

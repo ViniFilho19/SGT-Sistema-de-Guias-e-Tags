@@ -1,0 +1,42 @@
+{% from "_icones.html" import icone %}
+
+{# Tabela de movimentações (extrato). compacto: sem colunas de NF/observações, usada na lista expandida. #}
+{% macro movimentos(movs, compacto=False, fmt_cnpj=None) -%}
+<div class="overflow-x-auto"><table class="tabela">
+  <tr><th>Data</th><th>Tipo</th><th class="text-right">Qtd.</th><th class="text-right">Saldo</th><th>Detalhes</th>
+    {% if not compacto %}<th>Nota fiscal</th>{% endif %}<th>Usuário</th></tr>
+  {% for m in movs %}<tr>
+    <td class="whitespace-nowrap text-xs">{{ m.quando }}</td>
+    <td>{% if m.tipo == "entrada" %}<span class="badge b-green">Entrada</span>{% else %}<span class="badge b-orange">Saída</span>{% endif %}</td>
+    <td class="text-right font-semibold {{ 'text-emerald-700' if m.tipo == 'entrada' else 'text-amber-800' }}">{{ "+" if m.tipo == "entrada" else "−" }}{{ m.quantidade }}</td>
+    <td class="text-right">{{ m.saldo_apos }}</td>
+    <td class="text-xs leading-snug">
+      {% if m.tipo == "saida" %}Chamado <b class="font-medium text-slate-900">{{ m.chamado }}</b> · Patrimônio <a class="font-medium text-brand-700 hover:underline" href="/relatorios?patrimonio={{ m.patrimonio|urlencode }}" title="Ver o histórico desta máquina">{{ m.patrimonio }}</a>
+        {% if m.equipamento and m.equipamento.hostname %}<span class="text-slate-500">({{ m.equipamento.hostname }})</span>{% endif %}{% endif %}
+      {% if m.marca or m.modelo %}<span class="block text-slate-500">{{ [m.marca, m.modelo]|select|join(" · ") }}</span>{% endif %}
+      {% if m.numero_serie %}<span class="block text-slate-500">S/N: <span class="font-mono">{{ m.numero_serie }}</span></span>{% endif %}
+      {% if m.observacoes and not compacto %}<span class="block text-slate-500">{{ m.observacoes }}</span>{% endif %}
+    </td>
+    {% if not compacto %}<td class="text-xs leading-snug">{% if m.nota_fiscal %}{% set nf = m.nota_fiscal %}
+      NF <b class="font-medium text-slate-900">{{ nf.numero }}</b>{% if nf.serie %} série {{ nf.serie }}{% endif %}
+      {% if nf.cnpj_fornecedor %}<span class="block text-slate-500">CNPJ {{ fmt_cnpj(nf.cnpj_fornecedor) }}</span>{% endif %}
+      {% if nf.arquivo %}<a class="mt-0.5 inline-flex items-center gap-1 font-medium text-brand-700 hover:underline" href="/almoxarifado/notas/{{ nf.id }}/pdf" target="_blank" rel="noopener">{{ icone("guia", "size-3.5") }}Abrir PDF</a>{% endif %}
+      {% else %}<span class="text-slate-400">—</span>{% endif %}</td>{% endif %}
+    <td class="text-xs">{{ m.usuario.nome }}</td>
+  </tr>{% endfor %}
+</table></div>
+{%- endmacro %}
+
+{# Campos da nota fiscal (nomes nf_*), usados na entrada avulsa e na entrada em lote #}
+{% macro campos_nf(v, obrigatoria=False) -%}
+<div class="grid gap-3 sm:grid-cols-6">
+  <label class="sm:col-span-2">Nº da nota{{ " *" if obrigatoria }}<input name="nf_numero" value="{{ v.nf_numero }}" maxlength="20" {{ "required" if obrigatoria }}></label>
+  <label class="sm:col-span-1">Série<input name="nf_serie" value="{{ v.nf_serie }}" maxlength="5"></label>
+  <label class="sm:col-span-3">Data de emissão<input type="date" name="nf_emissao" value="{{ v.nf_emissao }}"></label>
+  <label class="sm:col-span-3">CNPJ do fornecedor{{ " *" if obrigatoria }}<input name="nf_cnpj" value="{{ v.nf_cnpj }}" maxlength="18" inputmode="numeric" placeholder="00.000.000/0000-00" {{ "required" if obrigatoria }}></label>
+  <label class="sm:col-span-3">Protocolo<input name="nf_protocolo" value="{{ v.nf_protocolo }}" maxlength="50"></label>
+  <label class="sm:col-span-6">Chave de acesso (NF-e, 44 dígitos)<input name="nf_chave" value="{{ v.nf_chave }}" maxlength="60" inputmode="numeric" class="font-mono"></label>
+  <label class="sm:col-span-6">PDF da nota fiscal <span class="text-xs font-normal text-slate-400">até 10 MB{{ " — se der erro no formulário, escolha o arquivo de novo" }}</span>
+    <input type="file" name="nf_pdf" accept="application/pdf,.pdf" class="file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1 file:text-brand-700"></label>
+</div>
+{%- endmacro %}

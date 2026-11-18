@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from .database import Base, SessionLocal, engine
 from .migracoes import migrar
 from .routers import auth, equipamentos, etiquetas, guias
-from . import web
+from . import almoxarifado, web
 
 
 def admin_inicial():
@@ -70,5 +70,6 @@ async def erro_http(request: Request, exc: HTTPException):
 
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 app.include_router(web.router)
+app.include_router(almoxarifado.router)
 for r in (auth.router, equipamentos.router, etiquetas.router, guias.router):
     app.include_router(r, prefix="/api")

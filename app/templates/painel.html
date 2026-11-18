@@ -42,6 +42,12 @@
   {{ tile("/relatorios", "Relatórios", "Veja a movimentação mensal de guias e etiquetas.", "relatorio", "Mensal", "b-blue") }}
 </div>
 
+{{ secao("Almoxarifado") }}
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {{ tile("/almoxarifado", "Peças e insumos", "Consulte o saldo, registre entradas com nota fiscal e saídas por chamado.", "caixa", "Estoque", "b-green") }}
+  {{ tile("/almoxarifado?situacao=baixo", "Estoque baixo", "Peças no limite do estoque mínimo, para pedir reposição.", "alerta", "Alerta", "b-orange") }}
+</div>
+
 {% if user.papel == "admin" %}
 {{ secao("Administração") }}
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

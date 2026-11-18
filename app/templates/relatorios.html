@@ -101,10 +101,11 @@
              ("Onde está agora (última guia)", hist.atual or "—"), ("Movimentações", hist.movs|length ~ " (" ~ hist.saidas ~ " saídas, " ~ hist.entradas ~ " entradas)")]) }}
   {% if hist.divergente %}<p class="hidden text-xs print:block">Atenção: o destino da última guia difere da localidade do cadastro/inventário.</p>{% endif %}
 
-  <div class="rel-cards grid gap-4 sm:grid-cols-3">
+  <div class="rel-cards grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     {{ stat("Saídas", hist.saidas, "seta", "bg-amber-50 text-amber-700") }}
     {{ stat("Entradas", hist.entradas, "voltar", "bg-emerald-50 text-emerald-700") }}
     {{ stat("Etiquetas geradas", hist.etiquetas|length, "etiqueta") }}
+    {{ stat("Peças colocadas", hist.qtd_pecas, "caixa") }}
   </div>
 
   <h2 class="section-title mt-10 mb-3">Movimentações</h2>
@@ -143,6 +144,18 @@
       <td>{{ i.hostname or "—" }}</td><td>{{ g.entregue_por or "—" }}</td><td>{{ g.retirado_por or "—" }}</td></tr>
     {% else %}<tr><td colspan="8">Nenhuma guia com esta máquina.</td></tr>{% endfor %}</tbody>
   </table></div></div>
+
+  {% if hist.pecas %}
+  <h2 class="section-title mt-10 mb-3">Peças colocadas nesta máquina</h2>
+  <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
+    <thead><tr><th>Data</th><th>Peça</th><th class="text-right">Qtd.</th><th>Chamado</th><th>Observações</th><th>Registrado por</th></tr></thead>
+    <tbody>{% for m in hist.pecas %}<tr><td class="whitespace-nowrap">{{ m.data }}</td>
+      <td><a class="font-medium text-slate-900 hover:text-brand-700 hover:underline" href="/almoxarifado/pecas/{{ m.peca.id }}">{{ m.peca.categoria.icone }} {{ m.peca.descricao }}</a>
+        {% if m.peca.marca or m.peca.modelo %}<span class="block text-xs text-slate-500">{{ [m.peca.marca, m.peca.modelo]|select|join(" · ") }}</span>{% endif %}</td>
+      <td class="text-right font-semibold">{{ m.quantidade }}</td><td>{{ m.chamado or "—" }}</td>
+      <td class="text-xs">{{ m.observacoes or "" }}</td><td class="text-xs">{{ m.usuario.nome }}</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+  {% endif %}
 
   {% if hist.etiquetas %}
   <h2 class="section-title mt-10 mb-3">Etiquetas deste equipamento</h2>

@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}
+{% block title %}{{ "Editar peça" if peca else "Nova peça" }}{% endblock %}
+{% block content %}
+<a href="{{ '/almoxarifado/pecas/' ~ peca.id if peca else '/almoxarifado' }}" class="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800">{{ icone("voltar", "size-4") }}Voltar</a>
+<div class="mb-6">{{ cabecalho("Editar peça" if peca else "Nova peça",
+  "O saldo não é alterado aqui: use entrada ou saída." if peca else "A peça entra no catálogo com saldo 0; depois registre a entrada.") }}</div>
+{{ alertas(erro) }}
+<form method="post" class="card max-w-3xl space-y-5">
+  <fieldset>
+    <legend class="mb-2 text-sm font-medium text-slate-700">Categoria</legend>
+    <div class="flex flex-wrap gap-2">
+      {% for c in categorias %}
+      <label class="flex-row cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 font-normal has-checked:border-brand-500 has-checked:bg-brand-50 has-checked:text-brand-800">
+        <input type="radio" name="categoria_id" value="{{ c.id }}" class="sr-only" required {{ "checked" if v.categoria_id == c.id|string }}>
+        <span class="text-lg leading-none">{{ c.icone }}</span>{{ c.nome }}</label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <label class="sm:col-span-2">Descrição / especificação *<input name="descricao" value="{{ v.descricao }}" required maxlength="200" class="uppercase" placeholder="Ex.: MEMÓRIA DDR4 8GB 3200MHZ"></label>
+    <label>Marca<input name="marca" value="{{ v.marca }}" maxlength="100" class="uppercase"></label>
+    <label>Modelo<input name="modelo" value="{{ v.modelo }}" maxlength="100" class="uppercase"></label>
+    <label>Estoque mínimo <span class="text-xs font-normal text-slate-400">com esse saldo ou menos, a peça aparece como “Baixo”</span>
+      <input type="number" name="quantidade_minima" value="{{ v.quantidade_minima }}" min="0" max="100000" required></label>
+    <label class="sm:col-span-2">Observações<input name="observacoes" value="{{ v.observacoes }}" maxlength="500"></label>
+  </div>
+  <button class="btn">{{ icone("salvar", "size-4") }}{{ "Salvar alterações" if peca else "Cadastrar peça" }}</button>
+</form>
+{% endblock %}

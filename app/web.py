@@ -5,6 +5,7 @@ import re
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlencode
 from pathlib import Path
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -16,7 +17,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from .config import settings
 from .database import get_db
-from .models import Equipamento, Etiqueta, Guia, GuiaItem, User
+from .models import Equipamento, Etiqueta, Guia, GuiaItem, Peca, PecaMovimento, User
 from .pdf import pdf_mes, pdf_patrimonio
 from .planilha import planilha_mes, planilha_patrimonio
 from .routers.etiquetas import gerar_etiqueta, qr_data_uri, texto_qr
@@ -431,7 +432,7 @@ def guia_ver(id_: int, request: Request, data: int = 1, ok: str = "", erro: str 
 
 
 # ---------- usuários (somente admin) ----------
-PAPEIS = ["operador", "admin"]
+PAPEIS = ["operador", "bancada", "admin"]  # bancada: gerencia o almoxarifado
 AVISOS = {"criado": "Usuário criado.", "papel": "Papel atualizado.", "senha": "Senha redefinida.",
           "editado": "Usuário atualizado.",
           "ativado": "Usuário ativado.", "desativado": "Usuário desativado."}
@@ -696,12 +697,24 @@ def _historico_patrimonio(db: Session, termo: str) -> dict:
                           .where(Etiqueta.equipamento_id == eq.id).order_by(Etiqueta.criado_em.desc())).all()
         for e in etqs:
             e.data = hora_local(e.criado_em)
+    # peças do almoxarifado colocadas nesta máquina (saídas ligadas ao cadastro ou com o mesmo patrimônio)
+    conds_peca = [PecaMovimento.equipamento_id == eq.id] if eq else []
+    for x in pats:
+        conds_peca.append(func.lower(PecaMovimento.patrimonio) == x.lower())
+        if x.lstrip("0"):
+            conds_peca.append(func.ltrim(PecaMovimento.patrimonio, "0") == x.lstrip("0"))
+    pecas = db.scalars(select(PecaMovimento).where(PecaMovimento.tipo == "saida", or_(*conds_peca))
+                       .options(selectinload(PecaMovimento.peca).selectinload(Peca.categoria),
+                                selectinload(PecaMovimento.usuario))
+                       .order_by(PecaMovimento.criado_em.desc())).all() if conds_peca else []
+    for m in pecas:
+        m.data = hora_local(m.criado_em)
     entradas = sum(1 for i in movs if "ENTRADA" in i.guia.tipo)
     atual = movs[0].guia.destinatario if movs else None  # destino da última guia
     divergente = bool(atual and eq and eq.localidade and not _mesmo_local(atual, eq.localidade))
     return {"busca": p, "eq": eq, "achado_por": achado_por, "movs": movs, "etiquetas": etqs, "entradas": entradas,
             "saidas": len(movs) - entradas, "atual": atual, "atual_desde": movs[0].data if movs else "",
-            "divergente": divergente}
+            "divergente": divergente, "pecas": pecas, "qtd_pecas": sum(m.quantidade for m in pecas)}
 
 
 @router.get("/relatorios")

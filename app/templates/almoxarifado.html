@@ -1,0 +1,102 @@
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas, cabecalho %}{% import "_almox.html" as ax %}
+{% block title %}Almoxarifado{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  {{ cabecalho("Almoxarifado", "Peças e insumos de TI: saldo, entradas com nota fiscal e saídas por chamado.") }}
+  {% if pode_gerir(user) %}<div class="flex flex-wrap gap-2">
+    <a class="btn btn-ghost" href="/almoxarifado/lote">{{ icone("guia", "size-4") }}Entrada em lote (NF)</a>
+    <a class="btn" href="/almoxarifado/pecas/nova{{ '?cat=' ~ cat if cat }}">{{ icone("mais", "size-4") }}Nova peça</a>
+  </div>{% endif %}
+</div>
+{{ alertas(erro, ok) }}
+
+{# resumo da saúde do estoque: cada cartão filtra a lista #}
+<div class="mb-5 grid gap-3 sm:grid-cols-3">
+  {% for s, par in SITUACOES.items() %}{% set cor = par[1] %}
+  <a href="/almoxarifado?situacao={{ '' if situacao == s else s }}{{ '&cat=' ~ cat if cat }}{{ '&q=' ~ q|urlencode if q }}"
+     class="card flex items-center justify-between p-4 transition hover:border-brand-200 {{ 'ring-2 ring-brand-500' if situacao == s }}">
+    <span class="text-sm text-slate-500">{{ {"esgotado": "Esgotadas", "baixo": "Estoque baixo", "ok": "Estoque OK"}[s] }}</span>
+    <span class="badge {{ cor }} text-base">{{ resumo[s] }}</span></a>
+  {% endfor %}
+</div>
+
+<form method="get" class="mb-4 flex flex-wrap gap-2" role="search">
+  {% if situacao %}<input type="hidden" name="situacao" value="{{ situacao }}">{% endif %}
+  <div class="relative min-w-60 flex-1">
+    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">{{ icone("buscar", "size-4") }}</span>
+    <input name="q" value="{{ q }}" placeholder="Descrição, marca ou modelo" class="pl-9" aria-label="Buscar peça">
+  </div>
+  <select name="cat" class="w-auto" aria-label="Categoria" data-auto-enviar>
+    <option value="0">Todas as categorias</option>
+    {% for c in categorias %}<option value="{{ c.id }}" {{ "selected" if cat == c.id }}>{{ c.icone }} {{ c.nome }}</option>{% endfor %}
+  </select>
+  <button class="btn btn-ghost">Buscar</button>
+  {% if q or cat or situacao %}<a class="btn btn-ghost" href="/almoxarifado">{{ icone("limpar", "size-4") }}Limpar</a>{% endif %}
+</form>
+
+<p class="mb-3 text-sm text-slate-500">{{ total }} peça{{ "s" if total != 1 }} no catálogo{% if q or cat or situacao %} com esses filtros{% endif %}. Clique numa peça para ver as últimas movimentações.</p>
+
+<div class="space-y-2">
+  {% for p in pecas %}{% set rot = SITUACOES[p.situacao][0] %}{% set cor = SITUACOES[p.situacao][1] %}
+  <details class="card group overflow-hidden p-0">
+    <summary class="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 hover:bg-slate-50/70 [&::-webkit-details-marker]:hidden">
+      <span class="text-slate-400 transition group-open:rotate-90">{{ icone("seta", "size-4") }}</span>
+      <span class="badge b-blue">{{ p.categoria.icone }} {{ p.categoria.nome }}</span>
+      <span class="min-w-40 flex-1"><b class="font-semibold text-slate-900">{{ p.descricao }}</b>
+        {% if p.marca or p.modelo %}<span class="block text-xs text-slate-500">{{ [p.marca, p.modelo]|select|join(" · ") }}</span>{% endif %}</span>
+      <span class="badge {{ cor }}">{{ rot }}</span>
+      <span class="w-20 text-right"><b class="text-lg text-slate-900">{{ p.quantidade }}</b>
+        <span class="block text-[11px] text-slate-400">mín. {{ p.quantidade_minima }}</span></span>
+      <span class="flex gap-1">
+        <a class="btn btn-sm" href="/almoxarifado/pecas/{{ p.id }}?tipo=entrada#movimentar" title="Registrar entrada" aria-label="Registrar entrada de {{ p.descricao }}">{{ icone("mais", "size-3.5") }}</a>
+        <a class="btn btn-ghost btn-sm" href="/almoxarifado/pecas/{{ p.id }}?tipo=saida#movimentar" title="Registrar saída" aria-label="Registrar saída de {{ p.descricao }}">{{ icone("menos", "size-3.5") }}</a>
+        {% if pode_gerir(user) %}<a class="btn btn-ghost btn-sm" href="/almoxarifado/pecas/{{ p.id }}/editar" title="Editar peça" aria-label="Editar {{ p.descricao }}">{{ icone("editar", "size-3.5") }}</a>{% endif %}
+      </span>
+    </summary>
+    <div class="border-t border-slate-100 bg-slate-50/50 px-4 py-3">
+      {% if ultimos[p.id] %}{{ ax.movimentos(ultimos[p.id], compacto=True) }}
+      {% else %}<p class="py-2 text-sm text-slate-500">Nenhuma movimentação ainda.</p>{% endif %}
+      <a class="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline" href="/almoxarifado/pecas/{{ p.id }}">Ver extrato completo{{ icone("seta", "size-3.5") }}</a>
+    </div>
+  </details>
+  {% else %}
+  <div class="card py-14 text-center text-slate-500">
+    <span class="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-slate-100 text-slate-400">{{ icone("caixa", "size-6") }}</span>
+    {% if q or cat or situacao %}Nenhuma peça com esses filtros. <a href="/almoxarifado" class="font-medium text-brand-700 hover:underline">Limpar filtros</a>
+    {% elif pode_gerir(user) %}O catálogo está vazio. <a href="/almoxarifado/pecas/nova" class="font-medium text-brand-700 hover:underline">Cadastrar a primeira peça</a>
+    {% else %}O catálogo está vazio. Peça à bancada ou a um administrador para cadastrar as peças.{% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{% if paginas > 1 %}
+<nav class="mt-4 flex items-center justify-center gap-2 text-sm" aria-label="Páginas">
+  {% set base = "/almoxarifado?q=" ~ q|urlencode ~ "&cat=" ~ cat ~ "&situacao=" ~ situacao ~ "&pagina_n=" %}
+  {% if pagina_n > 1 %}<a class="btn btn-ghost btn-sm" href="{{ base }}{{ pagina_n - 1 }}">{{ icone("voltar", "size-3.5") }}Anterior</a>{% endif %}
+  <span class="text-slate-500">Página {{ pagina_n }} de {{ paginas }}</span>
+  {% if pagina_n < paginas %}<a class="btn btn-ghost btn-sm" href="{{ base }}{{ pagina_n + 1 }}">Próxima{{ icone("seta", "size-3.5") }}</a>{% endif %}
+</nav>
+{% endif %}
+
+{% if pode_gerir(user) %}
+<section class="card mt-8">
+  <h2 class="section-title">Categorias</h2>
+  <p class="page-sub">Só é possível excluir uma categoria sem peças.</p>
+  <div class="mt-4 flex flex-wrap gap-2">
+    {% for c in categorias %}
+    <form method="post" action="/almoxarifado/categorias/{{ c.id }}/excluir" data-confirm="Excluir a categoria {{ c.nome }}?"
+          class="inline-flex items-center gap-1 rounded-full bg-slate-100 py-1 pr-1 pl-3 text-sm text-slate-700">
+      {{ c.icone }} {{ c.nome }}
+      <button class="grid size-6 cursor-pointer place-items-center rounded-full text-slate-400 hover:bg-red-100 hover:text-red-700"
+              title="Excluir categoria" aria-label="Excluir categoria {{ c.nome }}">{{ icone("fechar", "size-3") }}</button>
+    </form>
+    {% endfor %}
+  </div>
+  <form method="post" action="/almoxarifado/categorias" class="mt-4 flex flex-wrap items-end gap-2">
+    <label class="w-24">Ícone<input name="icone" value="📦" maxlength="16" class="text-center"></label>
+    <label class="min-w-48 flex-1">Nova categoria<input name="nome" required maxlength="50" placeholder="Ex.: BATERIA" class="uppercase"></label>
+    <button class="btn">{{ icone("mais", "size-4") }}Criar</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

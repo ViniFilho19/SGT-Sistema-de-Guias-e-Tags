@@ -1,6 +1,11 @@
 """Migrações simples e idempotentes: adiciona colunas novas a bancos já existentes (create_all não altera tabelas)."""
 from sqlalchemy import inspect, text
 
+# categorias iniciais do almoxarifado (criadas só quando ainda não há nenhuma)
+CATEGORIAS_PADRAO = [("MEMÓRIA", "🧠"), ("SSD", "💾"), ("HD", "💽"), ("FONTE", "🔌"), ("COOLER", "🌀"),
+                     ("PLACA-MÃE", "🧩"), ("PROCESSADOR", "⚙️"), ("TECLADO", "⌨️"), ("MOUSE", "🖱️"),
+                     ("CABO", "🔗"), ("MONITOR", "🖥️"), ("TONER", "🖨️"), ("OUTROS", "📦")]
+
 # tabela -> [(coluna, tipo SQL)]
 COLUNAS = {
     "etiquetas": [
@@ -38,3 +43,7 @@ def migrar(engine) -> None:
         cols = ("hostname", "ip", "patrimonio", "serial", "localidade", "mascara", "gateway")
         sets = ", ".join(f"{c} = (SELECT e.{c} FROM equipamentos e WHERE e.id = etiquetas.equipamento_id)" for c in cols)
         con.execute(text(f"UPDATE etiquetas SET {sets} WHERE " + " AND ".join(f"{c} IS NULL" for c in cols)))
+        if not con.execute(text("SELECT 1 FROM categorias_peca LIMIT 1")).first():
+            for nome, icone in CATEGORIAS_PADRAO:
+                con.execute(text("INSERT INTO categorias_peca (nome, icone, criado_em) VALUES (:n, :i, CURRENT_TIMESTAMP)"),
+                            {"n": nome, "i": icone})

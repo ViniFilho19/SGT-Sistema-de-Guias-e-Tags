@@ -30,11 +30,11 @@
   {% set p = request.url.path %}
   {% set menu = [("/", "Painel", "painel"), ("/etiquetas", "Etiquetas", "etiqueta"), ("/guias/nova", "Nova guia", "guia"),
                  ("/guias", "Guias emitidas", "historico"), ("/equipamentos", "Equipamentos", "equipamento"),
-                 ("/relatorios", "Relatórios", "relatorio")] %}
+                 ("/almoxarifado", "Almoxarifado", "caixa"), ("/relatorios", "Relatórios", "relatorio")] %}
   {% set menu = menu + [("/usuarios", "Usuários", "usuarios")] %}
   <nav class="mx-auto mt-1 flex max-w-7xl gap-1 overflow-x-auto px-2 sm:px-4" aria-label="Menu principal">
     {% for href, rotulo, ic in menu %}
-      {% set ativo = p == href or (href == "/guias" and p.startswith("/guias/") and p != "/guias/nova") or (href == "/usuarios" and p.startswith("/usuarios/")) %}
+      {% set ativo = p == href or (href == "/guias" and p.startswith("/guias/") and p != "/guias/nova") or (href == "/usuarios" and p.startswith("/usuarios/")) or (href == "/almoxarifado" and p.startswith("/almoxarifado/")) %}
       <a href="{{ href }}" class="nav-link {{ 'nav-ativo' if ativo }}"{% if ativo %} aria-current="page"{% endif %}>{{ icone(ic, "size-4") }}{{ rotulo }}</a>
     {% endfor %}
   </nav>

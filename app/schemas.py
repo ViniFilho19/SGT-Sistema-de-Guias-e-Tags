@@ -35,7 +35,7 @@ class UserCreate(Base):
     username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9._-]+$")
     nome: str = Field(min_length=2, max_length=100)
     senha: str = Field(min_length=8, max_length=128)
-    papel: Literal["admin", "operador"] = "operador"
+    papel: Literal["admin", "bancada", "operador"] = "operador"
 
 
 class UserOut(BaseModel):

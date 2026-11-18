@@ -24,7 +24,7 @@
 <div class="card overflow-hidden p-0"><div class="overflow-x-auto"><table class="tabela">
   <tr><th>Tipo</th><th>Modelo</th><th>Patrimônio</th><th>Nº série</th><th>Hostname</th><th>IP</th><th>Localidade</th><th>Cadastro</th></tr>
   {% for e in itens %}<tr><td><span class="badge b-blue">{{ e.tipo }}</span></td><td>{{ e.modelo or "" }}</td>
-    <td class="font-medium text-slate-900">{{ e.patrimonio or "" }}</td><td>{{ e.serial or "" }}</td>
+    <td class="font-medium text-slate-900">{% if e.patrimonio %}<a class="hover:text-brand-700 hover:underline" href="/relatorios?patrimonio={{ e.patrimonio|urlencode }}" title="Histórico: guias, etiquetas e peças">{{ e.patrimonio }}</a>{% endif %}</td><td>{{ e.serial or "" }}</td>
     <td>{{ e.hostname or "" }}</td><td class="font-mono text-xs">{{ e.ip or "" }}</td><td>{{ e.localidade or "" }}</td>
     <td class="whitespace-nowrap text-xs text-slate-500">{{ e.cadastro }}</td></tr>
   {% else %}<tr><td colspan="8" class="py-14 text-center text-slate-500">

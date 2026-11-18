@@ -1,0 +1,75 @@
+{% extends "base.html" %}{% from "_icones.html" import icone, alertas %}{% import "_almox.html" as ax %}
+{% block title %}{{ pc.descricao }}{% endblock %}
+{% block content %}
+{% set rot = SITUACOES[pc.situacao][0] %}{% set cor = SITUACOES[pc.situacao][1] %}
+<a href="/almoxarifado" class="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800">{{ icone("voltar", "size-4") }}Almoxarifado</a>
+<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+  <div class="min-w-0">
+    <span class="badge b-blue">{{ pc.categoria.icone }} {{ pc.categoria.nome }}</span>
+    <h1 class="page-title mt-2">{{ pc.descricao }}</h1>
+    {% if pc.marca or pc.modelo %}<p class="page-sub">{{ [pc.marca, pc.modelo]|select|join(" · ") }}</p>{% endif %}
+    {% if pc.observacoes %}<p class="mt-2 max-w-2xl text-sm text-slate-600">{{ pc.observacoes }}</p>{% endif %}
+  </div>
+  <div class="flex items-center gap-4">
+    <div class="text-right"><p class="text-xs text-slate-500">Saldo</p><p class="text-3xl font-bold text-slate-900">{{ pc.quantidade }}</p>
+      <p class="text-xs text-slate-500">mínimo {{ pc.quantidade_minima }} · <span class="badge {{ cor }}">{{ rot }}</span></p></div>
+    {% if pode_gerir(user) %}<div class="flex flex-col gap-2">
+      <a class="btn btn-ghost btn-sm" href="/almoxarifado/pecas/{{ pc.id }}/editar">{{ icone("editar", "size-3.5") }}Editar</a>
+      <form method="post" action="/almoxarifado/pecas/{{ pc.id }}/excluir"
+            data-confirm="Excluir {{ pc.descricao }} do catálogo? O extrato desta peça ({{ total }} movimentaç{{ 'ões' if total != 1 else 'ão' }}) será apagado junto.">
+        <button class="btn btn-ghost btn-sm w-full text-red-700">{{ icone("lixo", "size-3.5") }}Excluir</button></form>
+    </div>{% endif %}
+  </div>
+</div>
+{{ alertas(erro, ok) }}
+
+<section class="card mb-6" id="movimentar">
+  <h2 class="section-title">Registrar movimentação</h2>
+  <form method="post" action="/almoxarifado/pecas/{{ pc.id }}/movimentar" enctype="multipart/form-data" class="mt-4 space-y-4" data-mov>
+    <fieldset class="flex w-fit gap-1 rounded-xl bg-slate-200/60 p-1">
+      <legend class="sr-only">Tipo de movimentação</legend>
+      {% for t, r in [("entrada", "Entrada"), ("saida", "Saída")] %}
+      <label class="flex-row cursor-pointer items-center gap-2 rounded-lg px-4 py-1.5 has-checked:bg-card has-checked:text-slate-900 has-checked:shadow-sm">
+        <input type="radio" name="tipo" value="{{ t }}" class="size-4 w-auto" {{ "checked" if v.tipo == t }}>{{ r }}</label>
+      {% endfor %}
+    </fieldset>
+    <div class="grid gap-3 sm:grid-cols-6">
+      <label class="sm:col-span-1">Quantidade<input type="number" name="quantidade" value="{{ v.quantidade }}" min="1" max="100000" required></label>
+      {# saída: chamado e patrimônio obrigatórios #}
+      <label class="sm:col-span-2" data-so="saida">Nº do chamado *<input name="chamado" value="{{ v.chamado }}" maxlength="100" required></label>
+      <div class="sm:col-span-3" data-so="saida">
+        <label>Patrimônio do equipamento que recebe a peça *<input name="patrimonio" value="{{ v.patrimonio }}" maxlength="100" required autocomplete="off"></label>
+        <p class="mt-1.5 text-xs leading-snug text-slate-500" data-maquina aria-live="polite"></p>
+      </div>
+      {# entrada: rastreio opcional do item #}
+      <label class="sm:col-span-2" data-so="entrada">Marca<input name="marca" value="{{ v.marca or pc.marca or '' }}" maxlength="100" class="uppercase"></label>
+      <label class="sm:col-span-3" data-so="entrada">Modelo<input name="modelo" value="{{ v.modelo or pc.modelo or '' }}" maxlength="100" class="uppercase"></label>
+      <label class="sm:col-span-3" data-so="entrada">Nº de série (S/N)<input name="numero_serie" value="{{ v.numero_serie }}" maxlength="100" class="uppercase"></label>
+      <label class="sm:col-span-3">Observações<input name="observacoes" value="{{ v.observacoes }}" maxlength="500"></label>
+    </div>
+    <p class="text-xs text-slate-500" data-so="saida">Disponível: <b>{{ pc.quantidade }}</b>. A saída não é registrada se faltar saldo.</p>
+    <details data-so="entrada" class="rounded-xl border border-slate-200 p-4" {{ "open" if v.nf_numero }}>
+      <summary class="cursor-pointer text-sm font-semibold text-slate-800">Nota fiscal (opcional)</summary>
+      <div class="mt-3">{{ ax.campos_nf(v) }}</div>
+    </details>
+    <button class="btn">{{ icone("salvar", "size-4") }}Registrar</button>
+  </form>
+</section>
+
+<section class="card overflow-hidden p-0">
+  <div class="flex items-center justify-between px-6 pt-5 pb-3">
+    <h2 class="section-title">Extrato</h2>
+    <span class="text-sm text-slate-500">{{ total }} movimentaç{{ "ões" if total != 1 else "ão" }}</span>
+  </div>
+  {% if movs %}{{ ax.movimentos(movs, fmt_cnpj=fmt_cnpj) }}
+  {% else %}<p class="px-6 pb-8 text-sm text-slate-500">Nenhuma movimentação ainda. Registre a primeira entrada acima.</p>{% endif %}
+  {% if paginas > 1 %}
+  <nav class="flex items-center justify-center gap-2 border-t border-slate-100 py-3 text-sm" aria-label="Páginas do extrato">
+    {% if pg > 1 %}<a class="btn btn-ghost btn-sm" href="/almoxarifado/pecas/{{ pc.id }}?pg={{ pg - 1 }}">{{ icone("voltar", "size-3.5") }}Mais recentes</a>{% endif %}
+    <span class="text-slate-500">Página {{ pg }} de {{ paginas }}</span>
+    {% if pg < paginas %}<a class="btn btn-ghost btn-sm" href="/almoxarifado/pecas/{{ pc.id }}?pg={{ pg + 1 }}">Mais antigas{{ icone("seta", "size-3.5") }}</a>{% endif %}
+  </nav>
+  {% endif %}
+</section>
+<script src="{{ static_url('almoxarifado.js') }}"></script>
+{% endblock %}
